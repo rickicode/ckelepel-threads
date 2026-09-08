@@ -93,14 +93,8 @@ export function resolveCookie(cookieInput) {
   }
 
   const defaultCookieFiles = [
-    path.join(os.homedir(), ".config", "ckelepel", "cookies_diskongelo.json"),
+    path.join(process.cwd(), "cookies.json"),
     path.join(os.homedir(), ".config", "ckelepel", "cookies.json"),
-    path.join(
-      os.homedir(),
-      ".patchright-browser",
-      "cookies",
-      "diskongelo.json",
-    ),
   ];
   for (const f of defaultCookieFiles) {
     if (fs.existsSync(f)) {
