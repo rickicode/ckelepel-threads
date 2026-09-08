@@ -129,11 +129,16 @@ export class ThreadsDatasetDB {
         `
       INSERT INTO datasets (id, name, description, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(name) DO UPDATE SET updated_at = excluded.updated_at
     `,
       )
       .run(id, cleanName, description || `Dataset ${cleanName}`, now, now);
 
-    return { id, name: cleanName, description };
+    return (
+      this.db
+        .prepare("SELECT id, name, description FROM datasets WHERE name = ?")
+        .get(cleanName) || { id, name: cleanName, description }
+    );
   }
 
   listDatasets() {

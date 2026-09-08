@@ -142,8 +142,8 @@ export async function getProfile(username, options = {}) {
       }))
     : [];
 
-  const followerCount = userObj.follower_count || 0;
-  const followingCount = userObj.following_count || 0;
+  const followerCount = userObj.follower_count ?? 0;
+  const followingCount = userObj.following_count ?? 0;
   const postsCount = userObj.text_post_app_info?.post_count || 0;
 
   const profile = {
@@ -901,7 +901,23 @@ export async function getPostReplies(target, options = {}) {
     hasNextPage = true;
   }
 
-  while (replies.length < limit && hasNextPage && targetPostId) {
+  let csrfToken = "";
+  const resolved = resolveCookie(options.cookie);
+  if (resolved) {
+    const m = resolved.match(/csrftoken=([^;]+)/);
+    if (m) csrfToken = m[1].trim();
+  }
+
+  const maxReplyPages = Math.ceil(limit / 20) + 5;
+  let replyPage = 0;
+
+  while (
+    replies.length < limit &&
+    hasNextPage &&
+    targetPostId &&
+    replyPage < maxReplyPages
+  ) {
+    replyPage++;
     try {
       const variables = {
         postID: targetPostId,
@@ -953,13 +969,6 @@ export async function getPostReplies(target, options = {}) {
       params.append("lsd", "AVr_8k8q6l8");
       params.append("doc_id", REPLIES_DOC_ID);
       params.append("variables", JSON.stringify(variables));
-
-      let csrfToken = "";
-      const resolved = resolveCookie(options.cookie);
-      if (resolved) {
-        const m = resolved.match(/csrftoken=([^;]+)/);
-        if (m) csrfToken = m[1].trim();
-      }
 
       let activeDocId = REPLIES_DOC_ID;
 

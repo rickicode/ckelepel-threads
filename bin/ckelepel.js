@@ -30,7 +30,12 @@ function renderOutput(data, format, formatters) {
   if (chosen === "csv") {
     return formatters.csv(data);
   }
-  return formatters.stdout(data);
+  if (chosen === "stdout") {
+    return formatters.stdout(data);
+  }
+  throw new Error(
+    `Invalid format option "${format}". Supported formats: stdout, json, csv`,
+  );
 }
 
 function saveToDataset(options, data, type) {

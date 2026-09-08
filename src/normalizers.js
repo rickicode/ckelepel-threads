@@ -383,8 +383,11 @@ export function buildReplyTree(rootPost, replies = []) {
 
 export function formatReplyTreeAscii(rootNode) {
   if (!rootNode) return "";
+  const visited = new Set();
 
   function renderNode(node, prefix = "", isLast = true, isRoot = true) {
+    if (!node || (node.id && visited.has(node.id))) return "";
+    if (node.id) visited.add(node.id);
     let output = "";
     const textSnippet = (node.text || node.caption?.text || node.caption || "")
       .replace(/\n+/g, " ")

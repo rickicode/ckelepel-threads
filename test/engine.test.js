@@ -110,6 +110,17 @@ describe("ckelepel-threads pure engine tests", () => {
     assert.ok(ascii.includes("@charlie"));
   });
 
+  it("formatReplyTreeAscii handles cyclic references without infinite recursion", () => {
+    const nodeA = { id: "a", username: "alice", text: "hello", replies: [] };
+    const nodeB = { id: "b", username: "bob", text: "world", replies: [] };
+    nodeA.replies.push(nodeB);
+    nodeB.replies.push(nodeA);
+
+    const ascii = formatReplyTreeAscii(nodeA);
+    assert.ok(ascii.includes("[ROOT] @alice"));
+    assert.ok(ascii.includes("@bob"));
+  });
+
   it("getProfile parses profile and posts from mock response", async () => {
     const mockHtml = `
       <html>
