@@ -1,48 +1,48 @@
 export const ENTITY_EXPANSION_MAP = {
   // Indonesian trending religious/public figures & controversy umbrella clusters
-  'mama gufron': [
-    'mama ghufron',
-    'abuya ghufron',
-    'mama gufron',
-    'ponpes unqoriah',
-    'bahasa suryani',
-    'bahasa jin',
-    'debat nasab',
-    'nasab ba alwi',
-    'kh imaduddin',
-    'habib vs kiai',
+  "mama gufron": [
+    "mama ghufron",
+    "abuya ghufron",
+    "mama gufron",
+    "ponpes unqoriah",
+    "bahasa suryani",
+    "bahasa jin",
+    "debat nasab",
+    "nasab ba alwi",
+    "kh imaduddin",
+    "habib vs kiai",
   ],
-  'mama ghufron': [
-    'mama ghufron',
-    'abuya ghufron',
-    'mama gufron',
-    'ponpes unqoriah',
-    'bahasa suryani',
-    'bahasa jin',
-    'debat nasab',
-    'nasab ba alwi',
-    'kh imaduddin',
+  "mama ghufron": [
+    "mama ghufron",
+    "abuya ghufron",
+    "mama gufron",
+    "ponpes unqoriah",
+    "bahasa suryani",
+    "bahasa jin",
+    "debat nasab",
+    "nasab ba alwi",
+    "kh imaduddin",
   ],
   // Football / Soccer leagues & rivals
-  'liga spanyol': [
-    'liga spanyol',
-    'laliga',
-    'real madrid',
-    'barcelona',
-    'atletico madrid',
-    'clasico',
-    'hasil laliga',
-    'klasemen liga spanyol',
+  "liga spanyol": [
+    "liga spanyol",
+    "laliga",
+    "real madrid",
+    "barcelona",
+    "atletico madrid",
+    "clasico",
+    "hasil laliga",
+    "klasemen liga spanyol",
   ],
-  'liga inggris': [
-    'liga inggris',
-    'premier league',
-    'epl',
-    'manchester united',
-    'arsenal',
-    'liverpool',
-    'manchester city',
-    'chelsea',
+  "liga inggris": [
+    "liga inggris",
+    "premier league",
+    "epl",
+    "manchester united",
+    "arsenal",
+    "liverpool",
+    "manchester city",
+    "chelsea",
   ],
 };
 
@@ -52,11 +52,14 @@ export const ENTITY_EXPANSION_MAP = {
  * @returns {string[]}
  */
 export function expandQuery(query) {
-  if (!query || typeof query !== 'string') return [query];
+  if (!query || typeof query !== "string") return [query];
   const clean = query.trim().toLowerCase();
   for (const [key, expansions] of Object.entries(ENTITY_EXPANSION_MAP)) {
     if (clean === key || clean.includes(key)) {
-      const merged = [query, ...expansions.filter(e => e.toLowerCase() !== clean)];
+      const merged = [
+        query,
+        ...expansions.filter((e) => e.toLowerCase() !== clean),
+      ];
       return Array.from(new Set(merged));
     }
   }
@@ -64,7 +67,12 @@ export function expandQuery(query) {
 }
 
 export function matchesStrictQuery(text, query) {
-  if (!text || typeof text !== 'string' || !query || typeof query !== 'string') {
+  if (
+    !text ||
+    typeof text !== "string" ||
+    !query ||
+    typeof query !== "string"
+  ) {
     return false;
   }
   const cleanQ = query.trim().toLowerCase();
@@ -73,26 +81,35 @@ export function matchesStrictQuery(text, query) {
   const cleanText = text.toLowerCase();
 
   // 1. Exact full phrase match
-  const escaped = cleanQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const boundaryRegex = new RegExp(`(?:^|[^a-z0-9_])#?${escaped}(?:$|[^a-z0-9_])`, 'i');
+  const escaped = cleanQ.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const boundaryRegex = new RegExp(
+    `(?:^|[^a-z0-9_])#?${escaped}(?:$|[^a-z0-9_])`,
+    "i",
+  );
   if (boundaryRegex.test(cleanText)) return true;
 
   // 2. Token-level matching:
   // For 2 tokens: both must match.
   // For 3+ tokens: at least 2 significant tokens must match (relaxed semantic context).
-  const tokens = cleanQ.split(/\s+/).filter(t => t.length >= 3);
+  const tokens = cleanQ.split(/\s+/).filter((t) => t.length >= 3);
   if (tokens.length === 2) {
-    return tokens.every(tok => {
-      const tokEscaped = tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const tokRegex = new RegExp(`(?:^|[^a-z0-9_])#?${tokEscaped}(?:$|[^a-z0-9_])`, 'i');
+    return tokens.every((tok) => {
+      const tokEscaped = tok.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const tokRegex = new RegExp(
+        `(?:^|[^a-z0-9_])#?${tokEscaped}(?:$|[^a-z0-9_])`,
+        "i",
+      );
       return tokRegex.test(cleanText);
     });
   }
   if (tokens.length > 2) {
     let matchCount = 0;
     for (const tok of tokens) {
-      const tokEscaped = tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const tokRegex = new RegExp(`(?:^|[^a-z0-9_])#?${tokEscaped}(?:$|[^a-z0-9_])`, 'i');
+      const tokEscaped = tok.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const tokRegex = new RegExp(
+        `(?:^|[^a-z0-9_])#?${tokEscaped}(?:$|[^a-z0-9_])`,
+        "i",
+      );
       if (tokRegex.test(cleanText)) {
         matchCount++;
       }
@@ -105,11 +122,12 @@ export function matchesStrictQuery(text, query) {
 
 export function parseImage(imgObj) {
   if (!imgObj) return null;
-  const candidates = imgObj.candidates || imgObj.image_versions2?.candidates || [];
+  const candidates =
+    imgObj.candidates || imgObj.image_versions2?.candidates || [];
   if (candidates.length === 0) return null;
   const best = candidates[0];
   return {
-    type: 'image',
+    type: "image",
     url: best.url,
     width: best.width || null,
     height: best.height || null,
@@ -123,7 +141,7 @@ export function parseVideo(vidObj, fallbackImg) {
   const bestVid = versions[0];
   const thumb = parseImage(fallbackImg || vidObj.image_versions2);
   return {
-    type: 'video',
+    type: "video",
     url: bestVid.url,
     width: bestVid.width || null,
     height: bestVid.height || null,
@@ -168,12 +186,14 @@ export function extractLinkPreview(post) {
   if (!linkAttachment) return null;
 
   return {
-    url: linkAttachment.url || linkAttachment.link_url || '',
-    display_url: linkAttachment.display_url || '',
-    title: linkAttachment.title || linkAttachment.header || '',
-    description: linkAttachment.body || linkAttachment.description || '',
+    url: linkAttachment.url || linkAttachment.link_url || "",
+    display_url: linkAttachment.display_url || "",
+    title: linkAttachment.title || linkAttachment.header || "",
+    description: linkAttachment.body || linkAttachment.description || "",
     image_url:
-      linkAttachment.image_url || linkAttachment.image_versions2?.candidates?.[0]?.url || null,
+      linkAttachment.image_url ||
+      linkAttachment.image_versions2?.candidates?.[0]?.url ||
+      null,
   };
 }
 
@@ -191,38 +211,39 @@ export function normalizePost(post) {
   if (quotedRaw && (quotedRaw.pk || quotedRaw.id)) {
     quoted_post = {
       id: String(quotedRaw.pk || quotedRaw.id),
-      code: quotedRaw.code || '',
-      caption: quotedRaw.caption?.text || quotedRaw.text || '',
-      username: quotedRaw.user?.username || '',
+      code: quotedRaw.code || "",
+      caption: quotedRaw.caption?.text || quotedRaw.text || "",
+      username: quotedRaw.user?.username || "",
       url: quotedRaw.code
-        ? `https://www.threads.com/@${quotedRaw.user?.username}/post/${quotedRaw.code}`
-        : '',
+        ? `https://www.threads.net/@${quotedRaw.user?.username}/post/${quotedRaw.code}`
+        : "",
       media: extractMediaFromPost(quotedRaw),
     };
   }
 
   const likeCount = post.like_count || 0;
-  const replyCount = post.reply_count || post.text_post_app_info?.direct_reply_count || 0;
+  const replyCount =
+    post.reply_count || post.text_post_app_info?.direct_reply_count || 0;
   const repostCount = post.text_post_app_info?.repost_count || 0;
   const quoteCount = post.text_post_app_info?.quote_count || 0;
 
   return {
-    id: String(post.pk || post.id || ''),
-    code: post.code || '',
-    caption: post.caption?.text || post.text || '',
+    id: String(post.pk || post.id || ""),
+    code: post.code || "",
+    caption: post.caption?.text || post.text || "",
     topic,
     user: {
-      username: post.user?.username || '',
-      full_name: post.user?.full_name || '',
-      pk: String(post.user?.pk || post.user?.id || ''),
-      profile_pic_url: post.user?.profile_pic_url || '',
+      username: post.user?.username || "",
+      full_name: post.user?.full_name || "",
+      pk: String(post.user?.pk ?? post.user?.id ?? ""),
+      profile_pic_url: post.user?.profile_pic_url || "",
       is_verified: !!post.user?.is_verified,
     },
     author: {
-      id: String(post.user?.pk || post.user?.id || ''),
-      username: post.user?.username || '',
-      full_name: post.user?.full_name || '',
-      profile_pic_url: post.user?.profile_pic_url || '',
+      id: String(post.user?.pk ?? post.user?.id ?? ""),
+      username: post.user?.username || "",
+      full_name: post.user?.full_name || "",
+      profile_pic_url: post.user?.profile_pic_url || "",
       is_verified: !!post.user?.is_verified,
     },
     metrics: {
@@ -237,13 +258,16 @@ export function normalizePost(post) {
     is_quote: !!quoted_post,
     quoted_post,
     is_reply: !!post.text_post_app_info?.reply_to_author,
-    reply_to_username: post.text_post_app_info?.reply_to_author?.username || null,
+    reply_to_username:
+      post.text_post_app_info?.reply_to_author?.username || null,
     like_count: likeCount,
     reply_count: replyCount,
     repost_count: repostCount,
     quote_count: quoteCount,
     taken_at: post.taken_at || Math.floor(Date.now() / 1000),
-    url: post.code ? `https://www.threads.com/@${post.user?.username}/post/${post.code}` : '',
+    url: post.code
+      ? `https://www.threads.net/@${post.user?.username}/post/${post.code}`
+      : "",
   };
 }
 
@@ -258,19 +282,24 @@ export function extractInitialPayload(html) {
   while ((match = scriptRegex.exec(html)) !== null) {
     const raw = match[1].trim();
     if (
-      raw.includes('RelayPrefetchedStreamCache') ||
-      raw.includes('searchResults') ||
-      raw.includes('xdt_api') ||
-      raw.includes('ScheduledServerJS')
+      raw.includes("RelayPrefetchedStreamCache") ||
+      raw.includes("searchResults") ||
+      raw.includes("xdt_api") ||
+      raw.includes("ScheduledServerJS")
     ) {
       try {
         const parsed = JSON.parse(raw);
         function findPayload(obj) {
-          if (!obj || typeof obj !== 'object') return;
-          if (obj.searchResults || obj.xdt_api__v1__text_feed__search_results__connection_v2) {
+          if (!obj || typeof obj !== "object") return;
+          if (
+            obj.searchResults ||
+            obj.xdt_api__v1__text_feed__search_results__connection_v2
+          ) {
             const data =
-              obj.searchResults || obj.xdt_api__v1__text_feed__search_results__connection_v2;
-            if (data.page_info?.end_cursor) endCursor = data.page_info.end_cursor;
+              obj.searchResults ||
+              obj.xdt_api__v1__text_feed__search_results__connection_v2;
+            if (data.page_info?.end_cursor)
+              endCursor = data.page_info.end_cursor;
             if (data.page_info?.has_next_page !== undefined)
               hasNextPage = data.page_info.has_next_page;
             if (Array.isArray(data.edges)) {
@@ -308,7 +337,7 @@ export function extractPostsFromHtml(html) {
 export function buildReplyTree(rootPost, replies = []) {
   if (!rootPost) return null;
 
-  const rootId = String(rootPost.id || rootPost.pk || '');
+  const rootId = String(rootPost.id || rootPost.pk || "");
   const rootNode = {
     ...rootPost,
     id: rootId,
@@ -322,7 +351,7 @@ export function buildReplyTree(rootPost, replies = []) {
 
   const cleanReplies = Array.isArray(replies) ? replies : [];
   for (const r of cleanReplies) {
-    const rId = String(r.id || r.pk || '');
+    const rId = String(r.id || r.pk || "");
     if (rId) {
       nodeMap.set(rId, {
         ...r,
@@ -335,7 +364,7 @@ export function buildReplyTree(rootPost, replies = []) {
   }
 
   for (const r of cleanReplies) {
-    const rId = String(r.id || r.pk || '');
+    const rId = String(r.id || r.pk || "");
     const node = nodeMap.get(rId);
     if (!node) continue;
 
@@ -353,24 +382,24 @@ export function buildReplyTree(rootPost, replies = []) {
 }
 
 export function formatReplyTreeAscii(rootNode) {
-  if (!rootNode) return '';
+  if (!rootNode) return "";
 
-  function renderNode(node, prefix = '', isLast = true, isRoot = true) {
-    let output = '';
-    const textSnippet = (node.text || node.caption?.text || node.caption || '')
-      .replace(/\n+/g, ' ')
+  function renderNode(node, prefix = "", isLast = true, isRoot = true) {
+    let output = "";
+    const textSnippet = (node.text || node.caption?.text || node.caption || "")
+      .replace(/\n+/g, " ")
       .slice(0, 70);
     const likes = node.like_count || node.metrics?.likes || 0;
-    const author = node.username || node.user?.username || 'unknown';
+    const author = node.username || node.user?.username || "unknown";
 
     if (isRoot) {
       output += `[ROOT] @${author}: "${textSnippet}" (Likes: ${likes})\n`;
     } else {
-      const marker = isLast ? '└── ' : '├── ';
+      const marker = isLast ? "└── " : "├── ";
       output += `${prefix}${marker}@${author}: "${textSnippet}" (Likes: ${likes})\n`;
     }
 
-    const childPrefix = isRoot ? '' : prefix + (isLast ? '    ' : '│   ');
+    const childPrefix = isRoot ? "" : prefix + (isLast ? "    " : "│   ");
     const childList = node.replies || [];
     childList.forEach((child, idx) => {
       const lastChild = idx === childList.length - 1;

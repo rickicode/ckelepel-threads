@@ -7,7 +7,7 @@ import {
   sleep,
   jitterDelay,
   resolveCookie,
-} from './http.js';
+} from "./http.js";
 import {
   matchesStrictQuery,
   extractInitialPayload,
@@ -16,31 +16,34 @@ import {
   buildReplyTree,
   formatReplyTreeAscii,
   expandQuery,
-} from './normalizers.js';
-import { getLiveQueryMetadata } from './docid-resolver.js';
+} from "./normalizers.js";
+import { getLiveQueryMetadata } from "./docid-resolver.js";
 
 export async function getProfile(username, options = {}) {
-  const cleanUsername = username.replace(/^@/, '').trim();
+  const cleanUsername = username.replace(/^@/, "").trim();
   if (!cleanUsername) {
-    throw new Error('Username profil Threads wajib diisi');
+    throw new Error("Username profil Threads wajib diisi");
   }
 
-  const profileUrl = `https://www.threads.com/@${encodeURIComponent(cleanUsername)}`;
+  const profileUrl = `https://www.threads.net/@${encodeURIComponent(cleanUsername)}`;
   const res = await fetchWithRetry(
     profileUrl,
     {
       headers: {
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
       },
       proxy: options.proxy,
       cookie: options.cookie,
     },
-    { fetchFn: options.fetchFn }
+    { fetchFn: options.fetchFn },
   );
 
   if (!res.ok) {
-    throw new Error(`Threads profile fetch failed: HTTP ${res.status} ${res.statusText || ''}`);
+    throw new Error(
+      `Threads profile fetch failed: HTTP ${res.status} ${res.statusText || ""}`,
+    );
   }
 
   const html = await res.text();
@@ -50,7 +53,7 @@ export async function getProfile(username, options = {}) {
   let match;
 
   function findUser(obj) {
-    if (!obj || typeof obj !== 'object') return null;
+    if (!obj || typeof obj !== "object") return null;
     if (
       obj.user &&
       obj.user.username &&
@@ -76,7 +79,7 @@ export async function getProfile(username, options = {}) {
   }
 
   function findRecentPosts(obj) {
-    if (!obj || typeof obj !== 'object') return;
+    if (!obj || typeof obj !== "object") return;
     if (obj.thread_items && Array.isArray(obj.thread_items)) {
       for (const ti of obj.thread_items) {
         if (ti.post && (ti.post.pk || ti.post.id)) {
@@ -96,9 +99,9 @@ export async function getProfile(username, options = {}) {
 
   while ((match = scriptRegex.exec(html)) !== null) {
     if (
-      match[1].includes('follower_count') ||
-      match[1].includes('biography') ||
-      match[1].includes('user')
+      match[1].includes("follower_count") ||
+      match[1].includes("biography") ||
+      match[1].includes("user")
     ) {
       try {
         const parsed = JSON.parse(match[1]);
@@ -113,27 +116,29 @@ export async function getProfile(username, options = {}) {
   }
 
   if (!userObj) {
-    throw new Error(`Gagal menemukan data profil Threads untuk @${cleanUsername}`);
+    throw new Error(
+      `Gagal menemukan data profil Threads untuk @${cleanUsername}`,
+    );
   }
 
-  let bioText = '';
-  if (typeof userObj.biography === 'string') {
+  let bioText = "";
+  if (typeof userObj.biography === "string") {
     bioText = userObj.biography;
-  } else if (typeof userObj.text_app_biography === 'string') {
+  } else if (typeof userObj.text_app_biography === "string") {
     bioText = userObj.text_app_biography;
   } else if (userObj.text_app_biography?.text_fragments?.fragments) {
     bioText = userObj.text_app_biography.text_fragments.fragments
-      .map((f) => f.plaintext || '')
-      .join('');
+      .map((f) => f.plaintext || "")
+      .join("");
   } else if (userObj.biography?.text) {
     bioText = userObj.biography.text;
   }
 
   const bioLinks = Array.isArray(userObj.bio_links)
     ? userObj.bio_links.map((bl) => ({
-        title: bl.title || '',
-        url: bl.url || '',
-        lynx_url: bl.lynx_url || '',
+        title: bl.title || "",
+        url: bl.url || "",
+        lynx_url: bl.lynx_url || "",
       }))
     : [];
 
@@ -142,18 +147,18 @@ export async function getProfile(username, options = {}) {
   const postsCount = userObj.text_post_app_info?.post_count || 0;
 
   const profile = {
-    id: String(userObj.pk || userObj.id || ''),
+    id: String(userObj.pk || userObj.id || ""),
     username: userObj.username || cleanUsername,
-    full_name: userObj.full_name || '',
+    full_name: userObj.full_name || "",
     biography: bioText,
     bio_links: bioLinks,
     external_url: userObj.external_url || (bioLinks[0]?.url ?? null),
-    profile_pic_url: userObj.profile_pic_url || '',
+    profile_pic_url: userObj.profile_pic_url || "",
     profile_pic_url_hd:
       userObj.hd_profile_pic_versions?.[0]?.url ||
       userObj.hd_profile_pic_url_info?.url ||
       userObj.profile_pic_url ||
-      '',
+      "",
     is_verified: !!userObj.is_verified,
     is_private: !!userObj.is_private || !!userObj.text_post_app_is_private,
     is_joined_recently: !!userObj.is_joined_recently,
@@ -164,14 +169,14 @@ export async function getProfile(username, options = {}) {
     },
     follower_count: followerCount,
     following_count: followingCount,
-    url: `https://www.threads.com/@${userObj.username || cleanUsername}`,
+    url: `https://www.threads.net/@${userObj.username || cleanUsername}`,
   };
 
   const limit = options.limit || 10;
   const slicedPosts = recentPosts.slice(0, limit);
 
   return {
-    status: 'ok',
+    status: "ok",
     profile,
     recent_posts_count: slicedPosts.length,
     recent_posts: slicedPosts,
@@ -179,40 +184,44 @@ export async function getProfile(username, options = {}) {
 }
 
 export async function getUserPosts(username, options = {}) {
-  const cleanUsername = username.replace(/^@/, '').trim();
+  const cleanUsername = username.replace(/^@/, "").trim();
   if (!cleanUsername) {
-    throw new Error('Username profil Threads wajib diisi');
+    throw new Error("Username profil Threads wajib diisi");
   }
 
   const limit = options.limit || 20;
   const allPosts = new Map();
 
-  const profileUrl = `https://www.threads.com/@${encodeURIComponent(cleanUsername)}`;
+  const profileUrl = `https://www.threads.net/@${encodeURIComponent(cleanUsername)}`;
   const initRes = await fetchWithRetry(
     profileUrl,
     {
       headers: {
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
       },
       proxy: options.proxy,
       cookie: options.cookie,
     },
-    { fetchFn: options.fetchFn }
+    { fetchFn: options.fetchFn },
   );
 
   if (!initRes.ok) {
     throw new Error(
-      `Threads profile initial fetch failed: HTTP ${initRes.status} ${initRes.statusText || ''}`
+      `Threads profile initial fetch failed: HTTP ${initRes.status} ${initRes.statusText || ""}`,
     );
   }
 
   const html = await initRes.text();
 
-  const lsd = (html.match(/\["LSD",\[\],\{"token":"([^"]+)"\}/) || [])[1] || 'AVp_test_lsd';
-  const fb_dtsg = (html.match(/\["DTSGInitialData",\[\],\{"token":"([^"]+)"/) || [])[1] || '';
-  const jazoest = (html.match(/jazoest=(\d+)/) || [])[1] || '26499';
-  const spin_r = (html.match(/"__spin_r":(\d+)/) || [])[1] || '1046277330';
+  const lsd =
+    (html.match(/\["LSD",\[\],\{"token":"([^"]+)"\}/) || [])[1] ||
+    "AVp_test_lsd";
+  const fb_dtsg =
+    (html.match(/\["DTSGInitialData",\[\],\{"token":"([^"]+)"/) || [])[1] || "";
+  const jazoest = (html.match(/jazoest=(\d+)/) || [])[1] || "26499";
+  const spin_r = (html.match(/"__spin_r":(\d+)/) || [])[1] || "1046277330";
   const spin_t = String(Math.floor(Date.now() / 1000));
 
   let userId = null;
@@ -224,17 +233,18 @@ export async function getUserPosts(username, options = {}) {
 
   while ((match = scriptRegex.exec(html)) !== null) {
     if (
-      match[1].includes('mediaData') ||
-      match[1].includes('follower_count') ||
-      match[1].includes('BarcelonaProfileThreadsTab')
+      match[1].includes("mediaData") ||
+      match[1].includes("follower_count") ||
+      match[1].includes("BarcelonaProfileThreadsTab")
     ) {
       try {
         const parsed = JSON.parse(match[1]);
 
         function findMediaData(o) {
-          if (!o || typeof o !== 'object') return;
+          if (!o || typeof o !== "object") return;
           if (o.mediaData) {
-            if (o.mediaData.page_info?.end_cursor) endCursor = o.mediaData.page_info.end_cursor;
+            if (o.mediaData.page_info?.end_cursor)
+              endCursor = o.mediaData.page_info.end_cursor;
             if (o.mediaData.page_info?.has_next_page !== undefined)
               hasNextPage = o.mediaData.page_info.has_next_page;
 
@@ -248,7 +258,7 @@ export async function getUserPosts(username, options = {}) {
                   const norm = normalizePost(post);
                   if (norm && !allPosts.has(norm.id)) {
                     allPosts.set(norm.id, norm);
-                    if (typeof options.onProgress === 'function') {
+                    if (typeof options.onProgress === "function") {
                       options.onProgress(allPosts.size, limit);
                     }
                   }
@@ -275,7 +285,13 @@ export async function getUserPosts(username, options = {}) {
   let page = 1;
   const maxPages = Math.ceil((limit - allPosts.size) / 20) + 3;
 
-  while (userId && currentCursor && hasNextPage && allPosts.size < limit && page <= maxPages) {
+  while (
+    userId &&
+    currentCursor &&
+    hasNextPage &&
+    allPosts.size < limit &&
+    page <= maxPages
+  ) {
     page++;
     try {
       const variables = {
@@ -319,27 +335,27 @@ export async function getUserPosts(username, options = {}) {
       };
 
       const postParams = new URLSearchParams({
-        av: '17841433354984910',
-        __user: '0',
-        __a: '1',
+        av: "17841433354984910",
+        __user: "0",
+        __a: "1",
         __req: String(page),
-        __hs: '20693.HYP:barcelona_web_pkg.2.1...0',
-        dpr: '1',
-        __ccg: 'GOOD',
+        __hs: "20693.HYP:barcelona_web_pkg.2.1...0",
+        dpr: "1",
+        __ccg: "GOOD",
         __rev: spin_r,
-        __s: '98f905:2z7b95:e2vhd3',
-        __hsi: '7679099332477842999',
-        __comet_req: '29',
+        __s: "98f905:2z7b95:e2vhd3",
+        __hsi: "7679099332477842999",
+        __comet_req: "29",
         fb_dtsg,
         jazoest,
         lsd,
         __spin_r: spin_r,
-        __spin_b: 'trunk',
+        __spin_b: "trunk",
         __spin_t: spin_t,
-        __crn: 'comet.threads.BarcelonaProfileThreadsColumnRoute',
-        fb_api_caller_class: 'RelayModern',
-        fb_api_req_friendly_name: 'BarcelonaProfileThreadsTabRefetchableQuery',
-        server_timestamps: 'true',
+        __crn: "comet.threads.BarcelonaProfileThreadsColumnRoute",
+        fb_api_caller_class: "RelayModern",
+        fb_api_req_friendly_name: "BarcelonaProfileThreadsTabRefetchableQuery",
+        server_timestamps: "true",
         variables: JSON.stringify(variables),
         doc_id: PROFILE_POSTS_DOC_ID,
       });
@@ -347,21 +363,21 @@ export async function getUserPosts(username, options = {}) {
       const gres = await fetchWithRetry(
         THREADS_GRAPHQL_ENDPOINT,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-FB-LSD': lsd,
-            'X-FB-Friendly-Name': 'BarcelonaProfileThreadsTabRefetchableQuery',
-            'X-IG-App-ID': '238260118697367',
-            'X-Root-Field-Name': 'mediaData',
-            Origin: 'https://www.threads.com',
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-FB-LSD": lsd,
+            "X-FB-Friendly-Name": "BarcelonaProfileThreadsTabRefetchableQuery",
+            "X-IG-App-ID": "238260118697367",
+            "X-Root-Field-Name": "mediaData",
+            Origin: "https://www.threads.net",
             Referer: profileUrl,
           },
           body: postParams.toString(),
           proxy: options.proxy,
-        cookie: options.cookie,
+          cookie: options.cookie,
         },
-        { fetchFn: options.fetchFn }
+        { fetchFn: options.fetchFn },
       );
 
       if (!gres.ok) break;
@@ -381,7 +397,7 @@ export async function getUserPosts(username, options = {}) {
           const norm = normalizePost(post);
           if (norm && !allPosts.has(norm.id)) {
             allPosts.set(norm.id, norm);
-            if (typeof options.onProgress === 'function') {
+            if (typeof options.onProgress === "function") {
               options.onProgress(allPosts.size, limit);
             }
           }
@@ -403,7 +419,7 @@ export async function getUserPosts(username, options = {}) {
   const results = Array.from(allPosts.values()).slice(0, limit);
 
   return {
-    status: 'ok',
+    status: "ok",
     username: cleanUsername,
     user_id: userId,
     count: results.length,
@@ -415,10 +431,10 @@ export async function searchThreads(query, options = {}) {
   // Support single query string and array of multi-queries, with auto-expansion
   let queries = Array.isArray(query)
     ? query.map((q) => String(q).trim()).filter(Boolean)
-    : [String(query || '').trim()].filter(Boolean);
+    : [String(query || "").trim()].filter(Boolean);
 
   if (queries.length === 0) {
-    throw new Error('Search query is required');
+    throw new Error("Search query is required");
   }
 
   // Auto-expand known umbrella topics
@@ -433,8 +449,12 @@ export async function searchThreads(query, options = {}) {
   // If multiple queries provided, run multi-query fan-out across queries & facets
   const facetUrls = [];
   for (const q of queries) {
-    facetUrls.push(`https://www.threads.net/search?q=${encodeURIComponent(q)}&serp_type=default`);
-    facetUrls.push(`https://www.threads.net/search?q=${encodeURIComponent(q)}&serp_type=default&filter=recent`);
+    facetUrls.push(
+      `https://www.threads.net/search?q=${encodeURIComponent(q)}&serp_type=default`,
+    );
+    facetUrls.push(
+      `https://www.threads.net/search?q=${encodeURIComponent(q)}&serp_type=default&filter=recent`,
+    );
   }
 
   // Concurrently fetch facets; abort remaining in-flight requests as soon as target limit is fulfilled
@@ -448,23 +468,23 @@ export async function searchThreads(query, options = {}) {
         signal: controller.signal,
         headers: {
           Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         },
         proxy: options.proxy,
         cookie: options.cookie,
       },
-      { fetchFn: options.fetchFn }
+      { fetchFn: options.fetchFn },
     )
       .then((r) => {
-        if (!r.ok) return '';
+        if (!r.ok) return "";
         return r.text().then((html) => {
-          if (!html) return '';
+          if (!html) return "";
           const items = extractPostsFromHtml(html);
           for (const item of items) {
             if (!allPosts.has(item.id)) {
               allPosts.set(item.id, item);
               collected.push(item);
-              if (typeof options.onProgress === 'function') {
+              if (typeof options.onProgress === "function") {
                 options.onProgress(collected.length, limit);
               }
               if (collected.length >= limit) {
@@ -476,7 +496,7 @@ export async function searchThreads(query, options = {}) {
           return html;
         });
       })
-      .catch(() => '')
+      .catch(() => ""),
   );
 
   const htmlResults = await Promise.all(fetchPromises);
@@ -487,11 +507,16 @@ export async function searchThreads(query, options = {}) {
   if (collected.length < limit) {
     try {
       const initUrl = facetUrls[0];
-      const initHtml = htmlResults[0] || '';
-      const lsd = (initHtml.match(/\["LSD",\[\],\{"token":"([^"]+)"\}/) || [])[1] || 'AVp_test_lsd';
-      const fb_dtsg = (initHtml.match(/\["DTSGInitialData",\[\],\{"token":"([^"]+)"/) || [])[1] || '';
-      const jazoest = (initHtml.match(/jazoest=(\d+)/) || [])[1] || '26499';
-      const spin_r = (initHtml.match(/"__spin_r":(\d+)/) || [])[1] || '1046277330';
+      const initHtml = htmlResults[0] || "";
+      const lsd =
+        (initHtml.match(/\["LSD",\[\],\{"token":"([^"]+)"\}/) || [])[1] ||
+        "AVp_test_lsd";
+      const fb_dtsg =
+        (initHtml.match(/\["DTSGInitialData",\[\],\{"token":"([^"]+)"/) ||
+          [])[1] || "";
+      const jazoest = (initHtml.match(/jazoest=(\d+)/) || [])[1] || "26499";
+      const spin_r =
+        (initHtml.match(/"__spin_r":(\d+)/) || [])[1] || "1046277330";
       const spin_t = String(Math.floor(Date.now() / 1000));
 
       let { endCursor, hasNextPage } = extractInitialPayload(initHtml);
@@ -499,7 +524,12 @@ export async function searchThreads(query, options = {}) {
       let page = 1;
       const maxPages = Math.ceil((limit - allPosts.size) / 20) + 3;
 
-      while (currentCursor && hasNextPage && allPosts.size < limit && page <= maxPages) {
+      while (
+        currentCursor &&
+        hasNextPage &&
+        allPosts.size < limit &&
+        page <= maxPages
+      ) {
         page++;
         const variables = {
           after: currentCursor,
@@ -516,7 +546,7 @@ export async function searchThreads(query, options = {}) {
           power_search_info: null,
           query: clean,
           recent: 0,
-          search_surface: 'default',
+          search_surface: "default",
           tagID: null,
           trend_fbid: null,
           __relay_internal__pv__BarcelonaHasSERPHeaderrelayprovider: false,
@@ -557,27 +587,27 @@ export async function searchThreads(query, options = {}) {
         };
 
         const postParams = new URLSearchParams({
-          av: '17841433354984910',
-          __user: '0',
-          __a: '1',
+          av: "17841433354984910",
+          __user: "0",
+          __a: "1",
           __req: String(page),
-          __hs: '20693.HYP:barcelona_web_pkg.2.1...0',
-          dpr: '1',
-          __ccg: 'GOOD',
+          __hs: "20693.HYP:barcelona_web_pkg.2.1...0",
+          dpr: "1",
+          __ccg: "GOOD",
           __rev: spin_r,
-          __s: '98f905:2z7b95:e2vhd3',
-          __hsi: '7679099332477842999',
-          __comet_req: '29',
+          __s: "98f905:2z7b95:e2vhd3",
+          __hsi: "7679099332477842999",
+          __comet_req: "29",
           fb_dtsg,
           jazoest,
           lsd,
           __spin_r: spin_r,
-          __spin_b: 'trunk',
+          __spin_b: "trunk",
           __spin_t: spin_t,
-          __crn: 'comet.threads.BarcelonaSearchResultsColumnRoute',
-          fb_api_caller_class: 'RelayModern',
-          fb_api_req_friendly_name: 'BarcelonaSearchResultsRefetchableQuery',
-          server_timestamps: 'true',
+          __crn: "comet.threads.BarcelonaSearchResultsColumnRoute",
+          fb_api_caller_class: "RelayModern",
+          fb_api_req_friendly_name: "BarcelonaSearchResultsRefetchableQuery",
+          server_timestamps: "true",
           variables: JSON.stringify(variables),
           doc_id: SEARCH_DOC_ID,
         });
@@ -585,21 +615,22 @@ export async function searchThreads(query, options = {}) {
         const gres = await fetchWithRetry(
           THREADS_GRAPHQL_ENDPOINT,
           {
-            method: 'POST',
+            method: "POST",
             headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-FB-LSD': lsd,
-              'X-FB-Friendly-Name': 'BarcelonaSearchResultsRefetchableQuery',
-              'X-IG-App-ID': '238260118697367',
-              'X-Root-Field-Name': 'xdt_api__v1__text_feed__search_results__connection_v2',
-              Origin: 'https://www.threads.com',
+              "Content-Type": "application/x-www-form-urlencoded",
+              "X-FB-LSD": lsd,
+              "X-FB-Friendly-Name": "BarcelonaSearchResultsRefetchableQuery",
+              "X-IG-App-ID": "238260118697367",
+              "X-Root-Field-Name":
+                "xdt_api__v1__text_feed__search_results__connection_v2",
+              Origin: "https://www.threads.net",
               Referer: initUrl,
             },
             body: postParams.toString(),
             proxy: options.proxy,
-        cookie: options.cookie,
+            cookie: options.cookie,
           },
-          { fetchFn: options.fetchFn }
+          { fetchFn: options.fetchFn },
         );
 
         if (!gres.ok) break;
@@ -614,13 +645,14 @@ export async function searchThreads(query, options = {}) {
 
         for (const edge of edges) {
           const post =
-            edge.node?.thread?.thread_items?.[0]?.post || edge.node?.thread_items?.[0]?.post;
+            edge.node?.thread?.thread_items?.[0]?.post ||
+            edge.node?.thread_items?.[0]?.post;
           if (post && (post.pk || post.id)) {
             const formatted = normalizePost(post);
             if (formatted && !allPosts.has(formatted.id)) {
               allPosts.set(formatted.id, formatted);
               collected.push(formatted);
-              if (typeof options.onProgress === 'function') {
+              if (typeof options.onProgress === "function") {
                 options.onProgress(collected.length, limit);
               }
             }
@@ -649,21 +681,24 @@ export async function searchThreads(query, options = {}) {
     const aMatch = matchesAnyQuery(a.caption) ? 1 : 0;
     const bMatch = matchesAnyQuery(b.caption) ? 1 : 0;
     if (aMatch !== bMatch) return bMatch - aMatch;
-    return (b.like_count + b.reply_count) - (a.like_count + a.reply_count);
+    return b.like_count + b.reply_count - (a.like_count + a.reply_count);
   });
 
   const finalFiltered = isStrict
     ? collected.filter((item) => matchesAnyQuery(item.caption))
     : collected;
 
-  const results = (finalFiltered.length > 0 ? finalFiltered : collected).slice(0, limit);
+  const results = (finalFiltered.length > 0 ? finalFiltered : collected).slice(
+    0,
+    limit,
+  );
 
   return {
-    status: 'ok',
+    status: "ok",
     query: clean,
     count: results.length,
     results,
-    mode: 'direct-http-serp-graphql',
+    mode: "direct-http-serp-graphql",
   };
 }
 
@@ -671,7 +706,8 @@ export async function getPostReplies(target, options = {}) {
   const limit = options.limit || 20;
 
   let code = target.trim();
-  const urlMatch = code.match(/post\/([A-Za-z0-9_-]+)/) || code.match(/\/t\/([A-Za-z0-9_-]+)/);
+  const urlMatch =
+    code.match(/post\/([A-Za-z0-9_-]+)/) || code.match(/\/t\/([A-Za-z0-9_-]+)/);
   if (urlMatch) {
     code = urlMatch[1];
   }
@@ -680,22 +716,25 @@ export async function getPostReplies(target, options = {}) {
     throw new Error(`Invalid Threads post shortcode or URL format: ${target}`);
   }
 
-  const postUrl = `https://www.threads.com/t/${encodeURIComponent(code)}`;
+  const postUrl = `https://www.threads.net/t/${encodeURIComponent(code)}`;
   const res = await fetchWithRetry(
     postUrl,
     {
       headers: {
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
       },
       proxy: options.proxy,
       cookie: options.cookie,
     },
-    { fetchFn: options.fetchFn }
+    { fetchFn: options.fetchFn },
   );
 
   if (!res.ok) {
-    throw new Error(`Threads post fetch failed: HTTP ${res.status} ${res.statusText || ''}`);
+    throw new Error(
+      `Threads post fetch failed: HTTP ${res.status} ${res.statusText || ""}`,
+    );
   }
 
   const html = await res.text();
@@ -720,7 +759,7 @@ export async function getPostReplies(target, options = {}) {
         const pkStr = String(post.pk || post.id);
         if (!rootPost) {
           rootPost = normalizePost(post);
-          targetPostId = rootPost.id;
+          targetPostId = String(post.pk || rootPost.id).split("_")[0];
         } else if (pkStr !== String(rootPost.id)) {
           if (!seenIds.has(pkStr)) {
             seenIds.add(pkStr);
@@ -733,20 +772,21 @@ export async function getPostReplies(target, options = {}) {
               id: pkStr,
               post_id: rootPost.id,
               parent_id: parentId,
-              code: post.code || '',
-              username: post.user?.username || '',
-              user_id: post.user?.pk || '',
-              text: post.caption?.text || post.text || '',
-              reply_to: post.text_post_app_info?.reply_to_author?.username || null,
+              code: post.code || "",
+              username: post.user?.username || "",
+              user_id: post.user?.pk || "",
+              text: post.caption?.text || post.text || "",
+              reply_to:
+                post.text_post_app_info?.reply_to_author?.username || null,
               like_count: post.like_count || 0,
               reply_count: post.text_post_app_info?.direct_reply_count || 0,
               created_at: post.taken_at || Math.floor(Date.now() / 1000),
               url: post.code
-                ? `https://www.threads.com/@${post.user?.username}/post/${post.code}`
-                : '',
+                ? `https://www.threads.net/@${post.user?.username}/post/${post.code}`
+                : "",
             };
             replies.push(normalizedReply);
-            if (typeof options.onProgress === 'function') {
+            if (typeof options.onProgress === "function") {
               options.onProgress(replies.length, limit);
             }
           }
@@ -758,24 +798,28 @@ export async function getPostReplies(target, options = {}) {
   while ((match = scriptRegex.exec(html)) !== null) {
     const raw = match[1];
     if (
-      raw.includes('BarcelonaPostPageDirectQueryRelayPreloader') ||
-      raw.includes('BarcelonaPermalinkMobilePostColumnPageQueryRelayPreloader') ||
-      raw.includes('BarcelonaPostColumnPageQueryRelayPreloader') ||
-      raw.includes('RelayPrefetchedStreamCache')
+      raw.includes("BarcelonaPostPageDirectQueryRelayPreloader") ||
+      raw.includes(
+        "BarcelonaPermalinkMobilePostColumnPageQueryRelayPreloader",
+      ) ||
+      raw.includes("BarcelonaPostColumnPageQueryRelayPreloader") ||
+      raw.includes("RelayPrefetchedStreamCache")
     ) {
       try {
-        const cleaned = raw.replace(/\/\*[\s\S]*?\*\//g, '').trim();
+        const cleaned = raw.replace(/\/\*[\s\S]*?\*\//g, "").trim();
         const parsed = JSON.parse(cleaned);
 
         // Check if root media is present in mobile post column payload
-        const media = parsed.require?.[0]?.[3]?.[0]?.__bbox?.require?.[0]?.[3]?.[1]?.__bbox?.result?.data?.media;
+        const media =
+          parsed.require?.[0]?.[3]?.[0]?.__bbox?.require?.[0]?.[3]?.[1]?.__bbox
+            ?.result?.data?.media;
         if (media && media.caption && !rootPost) {
           rootPost = normalizePost(media);
-          targetPostId = String(media.pk || rootPost.id).split('_')[0];
+          targetPostId = String(media.pk || rootPost.id).split("_")[0];
         }
 
         function findEdgesInBbox(obj) {
-          if (!obj || typeof obj !== 'object') return null;
+          if (!obj || typeof obj !== "object") return null;
           if (obj.data && obj.data.edges) return obj.data;
           if (obj.edges && Array.isArray(obj.edges)) return obj;
           for (const k of Object.keys(obj)) {
@@ -799,10 +843,11 @@ export async function getPostReplies(target, options = {}) {
   }
 
   if (replies.length === 0 || !rootPost) {
-    const fallbackRegex = /<script type="application\/json" [^>]*data-sjs>([\s\S]*?)<\/script>/g;
+    const fallbackRegex =
+      /<script type="application\/json" [^>]*data-sjs>([\s\S]*?)<\/script>/g;
     let fbMatch;
     function findEdges(obj) {
-      if (!obj || typeof obj !== 'object') return null;
+      if (!obj || typeof obj !== "object") return null;
       if (obj.data && obj.data.edges) return obj.data;
       for (const k of Object.keys(obj)) {
         const found = findEdges(obj[k]);
@@ -813,20 +858,24 @@ export async function getPostReplies(target, options = {}) {
     while ((fbMatch = fallbackRegex.exec(html)) !== null) {
       const content = fbMatch[1];
       if (
-        (content.includes('BarcelonaPermalinkMobilePostColumnPageQueryRelayPreloader') ||
-         content.includes('BarcelonaPostColumnPageQueryRelayPreloader')) &&
-        content.includes('RelayPrefetchedStreamCache')
+        (content.includes(
+          "BarcelonaPermalinkMobilePostColumnPageQueryRelayPreloader",
+        ) ||
+          content.includes("BarcelonaPostColumnPageQueryRelayPreloader")) &&
+        content.includes("RelayPrefetchedStreamCache")
       ) {
         try {
           const parsed = JSON.parse(content);
-          const media = parsed.require?.[0]?.[3]?.[0]?.__bbox?.require?.[0]?.[3]?.[1]?.__bbox?.result?.data?.media;
+          const media =
+            parsed.require?.[0]?.[3]?.[0]?.__bbox?.require?.[0]?.[3]?.[1]
+              ?.__bbox?.result?.data?.media;
           if (media && media.caption && !rootPost) {
             rootPost = normalizePost(media);
-            targetPostId = String(media.pk || rootPost.id).split('_')[0];
+            targetPostId = String(media.pk || rootPost.id).split("_")[0];
           }
         } catch {}
       }
-      if (content.includes('BarcelonaPostPageDirectQueryRelayPreloader')) {
+      if (content.includes("BarcelonaPostPageDirectQueryRelayPreloader")) {
         try {
           const parsed = JSON.parse(content);
           const dataObj = findEdges(parsed);
@@ -856,7 +905,7 @@ export async function getPostReplies(target, options = {}) {
     try {
       const variables = {
         postID: targetPostId,
-        sort_order: 'TOP',
+        sort_order: "TOP",
         after: currentCursor,
         __relay_internal__pv__BarcelonaHasPermalinkIndentationrelayprovider: false,
         __relay_internal__pv__BarcelonaIsLoggedInrelayprovider: true,
@@ -901,13 +950,13 @@ export async function getPostReplies(target, options = {}) {
       };
 
       const params = new URLSearchParams();
-      params.append('lsd', 'AVr_8k8q6l8');
-      params.append('doc_id', REPLIES_DOC_ID);
-      params.append('variables', JSON.stringify(variables));
+      params.append("lsd", "AVr_8k8q6l8");
+      params.append("doc_id", REPLIES_DOC_ID);
+      params.append("variables", JSON.stringify(variables));
 
-      let csrfToken = '';
-      if (options.cookie) {
-        const resolved = resolveCookie(options.cookie);
+      let csrfToken = "";
+      const resolved = resolveCookie(options.cookie);
+      if (resolved) {
         const m = resolved.match(/csrftoken=([^;]+)/);
         if (m) csrfToken = m[1].trim();
       }
@@ -917,52 +966,55 @@ export async function getPostReplies(target, options = {}) {
       let gres = await fetchWithRetry(
         THREADS_GRAPHQL_ENDPOINT,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-FB-Friendly-Name': 'BarcelonaPostPageDirectQuery',
-            ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-FB-Friendly-Name": "BarcelonaPostPageDirectQuery",
+            ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
           },
           body: params.toString(),
           proxy: options.proxy,
           cookie: options.cookie,
         },
-        { fetchFn: options.fetchFn }
+        { fetchFn: options.fetchFn },
       );
 
       let gjson = gres.ok ? await gres.json() : null;
 
       // Dynamic self-healing fallback: If Meta rotates doc_id or rejects the query
       if (!gjson || gjson.errors || !gjson.data?.data) {
-        const liveMeta = await getLiveQueryMetadata('BarcelonaPostPageDirectQuery', {
-          proxy: options.proxy,
-          cookie: options.cookie,
-          targetUrl: postUrl,
-        });
+        const liveMeta = await getLiveQueryMetadata(
+          "BarcelonaPostPageDirectQuery",
+          {
+            proxy: options.proxy,
+            cookie: options.cookie,
+            targetUrl: postUrl,
+          },
+        );
 
         if (liveMeta?.docId && liveMeta.docId !== activeDocId) {
           activeDocId = liveMeta.docId;
-          params.set('doc_id', activeDocId);
+          params.set("doc_id", activeDocId);
 
           if (liveMeta.providerVars) {
             Object.assign(variables, liveMeta.providerVars);
-            params.set('variables', JSON.stringify(variables));
+            params.set("variables", JSON.stringify(variables));
           }
 
           gres = await fetchWithRetry(
             THREADS_GRAPHQL_ENDPOINT,
             {
-              method: 'POST',
+              method: "POST",
               headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-FB-Friendly-Name': 'BarcelonaPostPageDirectQuery',
-                ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-FB-Friendly-Name": "BarcelonaPostPageDirectQuery",
+                ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
               },
               body: params.toString(),
               proxy: options.proxy,
               cookie: options.cookie,
             },
-            { fetchFn: options.fetchFn }
+            { fetchFn: options.fetchFn },
           );
 
           gjson = gres.ok ? await gres.json() : null;
@@ -972,7 +1024,11 @@ export async function getPostReplies(target, options = {}) {
       if (!gres.ok || !gjson) break;
 
       const pageData = gjson?.data?.data;
-      if (!pageData || !Array.isArray(pageData.edges) || pageData.edges.length === 0) {
+      if (
+        !pageData ||
+        !Array.isArray(pageData.edges) ||
+        pageData.edges.length === 0
+      ) {
         break;
       }
 
@@ -998,7 +1054,7 @@ export async function getPostReplies(target, options = {}) {
 
   const results = replies.slice(0, limit);
   const responseData = {
-    status: 'ok',
+    status: "ok",
     rootPost,
     count: results.length,
     replies: results,

@@ -1,28 +1,30 @@
-import fs from 'node:fs';
-import { fetch as undiciFetch, ProxyAgent } from 'undici';
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
-export const SEARCH_DOC_ID = '28488931787378929';
-export const PROFILE_POSTS_DOC_ID = '28060185173641715';
-export let REPLIES_DOC_ID = '27798529199846702';
+export const SEARCH_DOC_ID = "28488931787378929";
+export const PROFILE_POSTS_DOC_ID = "28060185173641715";
+export let REPLIES_DOC_ID = "27798529199846702";
 export function setRepliesDocId(newId) {
   REPLIES_DOC_ID = newId;
 }
-export const THREADS_GRAPHQL_ENDPOINT = 'https://www.threads.com/graphql/query';
+export const THREADS_GRAPHQL_ENDPOINT = "https://www.threads.net/graphql/query";
 
 export const DEFAULT_HEADERS = {
-  'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
   Accept:
-    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-  'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-  'Sec-Fetch-Dest': 'document',
-  'Sec-Fetch-Mode': 'navigate',
-  'Sec-Fetch-Site': 'none',
-  'Sec-Fetch-User': '?1',
-  'Upgrade-Insecure-Requests': '1',
-  'X-FB-LSD': 'AdT1DBzgGffd0Si5YthcWTZ7ilo',
-  'X-ASBD-ID': '129477',
-  'X-IG-App-ID': '238260118697367',
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Upgrade-Insecure-Requests": "1",
+  "X-FB-LSD": "AdT1DBzgGffd0Si5YthcWTZ7ilo",
+  "X-ASBD-ID": "129477",
+  "X-IG-App-ID": "238260118697367",
 };
 
 export function getDispatcher(proxyUrl) {
@@ -32,7 +34,13 @@ export function getDispatcher(proxyUrl) {
     process.env.HTTP_PROXY ||
     process.env.ALL_PROXY;
   if (targetProxy) {
-    return new ProxyAgent(targetProxy);
+    try {
+      return new ProxyAgent(targetProxy);
+    } catch (err) {
+      throw new Error(
+        `Invalid proxy URL configuration: ${targetProxy} (${err.message})`,
+      );
+    }
   }
   return undefined;
 }
@@ -48,23 +56,23 @@ export function parseCookieInput(input) {
 
   if (fs.existsSync(trimmed)) {
     try {
-      content = fs.readFileSync(trimmed, 'utf-8').trim();
+      content = fs.readFileSync(trimmed, "utf-8").trim();
     } catch {}
   }
 
-  if (content.startsWith('[') || content.startsWith('{')) {
+  if (content.startsWith("[") || content.startsWith("{")) {
     try {
       const parsed = JSON.parse(content);
       if (Array.isArray(parsed)) {
         return parsed
           .filter((c) => c && c.name && c.value !== undefined)
           .map((c) => `${c.name}=${c.value}`)
-          .join('; ');
+          .join("; ");
       }
-      if (typeof parsed === 'object' && parsed !== null) {
+      if (typeof parsed === "object" && parsed !== null) {
         return Object.entries(parsed)
           .map(([k, v]) => `${k}=${v}`)
-          .join('; ');
+          .join("; ");
       }
     } catch {}
   }
@@ -73,13 +81,34 @@ export function parseCookieInput(input) {
 }
 
 export function resolveCookie(cookieInput) {
+  if (cookieInput) {
+    return parseCookieInput(cookieInput);
+  }
   const candidate =
-    cookieInput ||
     process.env.THREADS_COOKIE ||
     process.env.COOKIE ||
-    process.env.THREADS_COOKIES ||
-    undefined;
-  return parseCookieInput(candidate);
+    process.env.THREADS_COOKIES;
+  if (candidate) {
+    return parseCookieInput(candidate);
+  }
+
+  const defaultCookieFiles = [
+    path.join(os.homedir(), ".config", "ckelepel", "cookies_diskongelo.json"),
+    path.join(os.homedir(), ".config", "ckelepel", "cookies.json"),
+    path.join(
+      os.homedir(),
+      ".patchright-browser",
+      "cookies",
+      "diskongelo.json",
+    ),
+  ];
+  for (const f of defaultCookieFiles) {
+    if (fs.existsSync(f)) {
+      return parseCookieInput(f);
+    }
+  }
+
+  return undefined;
 }
 
 export function jitterDelay(minMs = 150, maxMs = 350) {
@@ -104,7 +133,7 @@ export async function fetchWithRetry(url, options = {}, retryConfig = {}) {
 
   const cookie = resolveCookie(options.cookie);
   if (cookie) {
-    requestOptions.headers['Cookie'] = cookie;
+    requestOptions.headers["Cookie"] = cookie;
   }
 
   if (!requestOptions.dispatcher) {

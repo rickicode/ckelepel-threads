@@ -7,12 +7,12 @@ export function formatProfileStdout(data) {
   const lines = [
     `=== Threads Profile: @${p.username} ===`,
     `ID:          ${p.id}`,
-    `Full Name:   ${p.full_name || '-'}${p.is_verified ? ' [Verified]' : ''}`,
+    `Full Name:   ${p.full_name || "-"}${p.is_verified ? " [Verified]" : ""}`,
     `Followers:   ${(p.metrics?.followers_count ?? p.follower_count ?? 0).toLocaleString()}`,
     `Following:   ${(p.metrics?.following_count ?? p.following_count ?? 0).toLocaleString()}`,
     `Posts Count: ${(p.metrics?.posts_count ?? 0).toLocaleString()}`,
-    `Private:     ${p.is_private ? 'Yes' : 'No'}`,
-    `URL:         ${p.url || `https://www.threads.com/@${p.username}`}`,
+    `Private:     ${p.is_private ? "Yes" : "No"}`,
+    `URL:         ${p.url || `https://www.threads.net/@${p.username}`}`,
   ];
 
   if (p.external_url) {
@@ -20,7 +20,7 @@ export function formatProfileStdout(data) {
   }
 
   if (p.biography) {
-    lines.push('--- Bio ---');
+    lines.push("--- Bio ---");
     lines.push(p.biography);
   }
 
@@ -28,61 +28,71 @@ export function formatProfileStdout(data) {
     lines.push(`\n--- Recent Posts (${data.recent_posts.length}) ---`);
     for (const post of data.recent_posts) {
       lines.push(
-        `[${post.code}] ${post.taken_at ? new Date(post.taken_at * 1000).toISOString().slice(0, 10) : ''} | Likes: ${post.metrics?.likes ?? post.like_count ?? 0} | Replies: ${post.metrics?.replies ?? post.reply_count ?? 0}`
+        `[${post.code}] ${post.taken_at ? new Date(post.taken_at * 1000).toISOString().slice(0, 10) : ""} | Likes: ${post.metrics?.likes ?? post.like_count ?? 0} | Replies: ${post.metrics?.replies ?? post.reply_count ?? 0}`,
       );
       if (post.caption) {
-        const snippet = post.caption.replace(/\n+/g, ' ').slice(0, 100);
-        lines.push(`  "${snippet}${post.caption.length > 100 ? '...' : ''}"`);
+        const snippet = post.caption.replace(/\n+/g, " ").slice(0, 100);
+        lines.push(`  "${snippet}${post.caption.length > 100 ? "..." : ""}"`);
       }
     }
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 export function formatPostsStdout(data) {
   const list = Array.isArray(data) ? data : data?.posts || data?.results || [];
-  const title = data.username ? `Posts for @${data.username}` : data.query ? `Search Results for "${data.query}"` : 'Threads Posts';
+  const title = data.username
+    ? `Posts for @${data.username}`
+    : data.query
+      ? `Search Results for "${data.query}"`
+      : "Threads Posts";
   const lines = [`=== ${title} (${list.length}) ===\n`];
 
   if (list.length === 0) {
-    lines.push('No posts found.');
-    return lines.join('\n');
+    lines.push("No posts found.");
+    return lines.join("\n");
   }
 
   list.forEach((post, i) => {
     lines.push(
-      `${i + 1}. [${post.code || post.id}] @${post.user?.username || 'unknown'} ${post.user?.is_verified ? '[✓]' : ''}`
+      `${i + 1}. [${post.code || post.id}] @${post.user?.username || "unknown"} ${post.user?.is_verified ? "[✓]" : ""}`,
     );
     lines.push(
-      `   Date: ${post.taken_at ? new Date(post.taken_at * 1000).toISOString() : '-'} | Likes: ${post.metrics?.likes ?? post.like_count ?? 0} | Replies: ${post.metrics?.replies ?? post.reply_count ?? 0} | Reposts: ${post.metrics?.reposts ?? post.repost_count ?? 0}`
+      `   Date: ${post.taken_at ? new Date(post.taken_at * 1000).toISOString() : "-"} | Likes: ${post.metrics?.likes ?? post.like_count ?? 0} | Replies: ${post.metrics?.replies ?? post.reply_count ?? 0} | Reposts: ${post.metrics?.reposts ?? post.repost_count ?? 0}`,
     );
     if (post.caption) {
       const formatted = post.caption
-        .split('\n')
+        .split("\n")
         .map((l) => `   ${l}`)
-        .join('\n');
+        .join("\n");
       lines.push(formatted);
     }
-    lines.push(`   Link: ${post.url || `https://www.threads.com/t/${post.code}`}\n`);
+    lines.push(
+      `   Link: ${post.url || `https://www.threads.net/t/${post.code}`}\n`,
+    );
   });
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 export function formatRepliesStdout(data) {
   const lines = [];
   if (data.rootPost) {
-    lines.push(`=== Root Post: @${data.rootPost.user?.username || 'unknown'} [${data.rootPost.code || data.rootPost.id}] ===`);
+    lines.push(
+      `=== Root Post: @${data.rootPost.user?.username || "unknown"} [${data.rootPost.code || data.rootPost.id}] ===`,
+    );
     if (data.rootPost.caption) {
       lines.push(data.rootPost.caption);
     }
-    lines.push(`Link: ${data.rootPost.url || `https://www.threads.com/t/${data.rootPost.code}`}`);
-    lines.push('');
+    lines.push(
+      `Link: ${data.rootPost.url || `https://www.threads.net/t/${data.rootPost.code}`}`,
+    );
+    lines.push("");
   }
 
   if (data.tree_ascii) {
-    lines.push('=== Reply Tree ===');
+    lines.push("=== Reply Tree ===");
     lines.push(data.tree_ascii);
   } else if (Array.isArray(data.replies)) {
     lines.push(`=== Replies (${data.replies.length}) ===\n`);
@@ -92,5 +102,5 @@ export function formatRepliesStdout(data) {
     });
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }

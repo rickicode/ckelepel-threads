@@ -1,7 +1,7 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
-import { DatabaseSync } from 'node:sqlite';
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { DatabaseSync } from "node:sqlite";
 
 /**
  * Get default path for ckelepel-threads dataset database.
@@ -17,7 +17,7 @@ export function getDefaultDbPath() {
     }
     return path.resolve(custom);
   }
-  return path.resolve(process.cwd(), 'threads_dataset.db');
+  return path.resolve(process.cwd(), "threads_dataset.db");
 }
 
 export class ThreadsDatasetDB {
@@ -28,7 +28,14 @@ export class ThreadsDatasetDB {
       fs.mkdirSync(dir, { recursive: true });
     }
     this.db = new DatabaseSync(this.dbPath);
-    this.initSchema();
+    try {
+      this.initSchema();
+    } catch (err) {
+      try {
+        this.db.close();
+      } catch {}
+      throw err;
+    }
   }
 
   initSchema() {
@@ -106,36 +113,48 @@ export class ThreadsDatasetDB {
     `);
   }
 
-  getOrCreateDataset(name = 'default', description = '') {
-    const cleanName = (name || 'default').trim().toLowerCase();
-    const existing = this.db.prepare('SELECT id, name, description FROM datasets WHERE name = ?').get(cleanName);
+  getOrCreateDataset(name = "default", description = "") {
+    const cleanName = (name || "default").trim().toLowerCase();
+    const existing = this.db
+      .prepare("SELECT id, name, description FROM datasets WHERE name = ?")
+      .get(cleanName);
     if (existing) {
       return existing;
     }
 
     const now = Math.floor(Date.now() / 1000);
     const id = `ds_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO datasets (id, name, description, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?)
-    `).run(id, cleanName, description || `Dataset ${cleanName}`, now, now);
+    `,
+      )
+      .run(id, cleanName, description || `Dataset ${cleanName}`, now, now);
 
     return { id, name: cleanName, description };
   }
 
   listDatasets() {
-    return this.db.prepare(`
+    return this.db
+      .prepare(
+        `
       SELECT d.id, d.name, d.description, d.created_at, d.updated_at,
              COUNT(p.id) AS post_count
       FROM datasets d
       LEFT JOIN posts p ON d.id = p.dataset_id
       GROUP BY d.id
       ORDER BY d.updated_at DESC
-    `).all();
+    `,
+      )
+      .all();
   }
 
   getDatasetCount(datasetId) {
-    const row = this.db.prepare('SELECT COUNT(*) AS total FROM posts WHERE dataset_id = ?').get(datasetId);
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS total FROM posts WHERE dataset_id = ?")
+      .get(datasetId);
     return row ? Number(row.total) : 0;
   }
 
@@ -145,15 +164,17 @@ export class ThreadsDatasetDB {
       return { inserted: 0, updated: 0, total: 0 };
     }
 
-    const dataset = datasetNameOrId?.startsWith?.('ds_')
+    const dataset = datasetNameOrId?.startsWith?.("ds_")
       ? { id: datasetNameOrId }
-      : this.getOrCreateDataset(datasetNameOrId || 'default');
+      : this.getOrCreateDataset(datasetNameOrId || "default");
 
     const now = Math.floor(Date.now() / 1000);
     let inserted = 0;
     let updated = 0;
 
-    const selectStmt = this.db.prepare('SELECT id FROM posts WHERE dataset_id = ? AND id = ?');
+    const selectStmt = this.db.prepare(
+      "SELECT id FROM posts WHERE dataset_id = ? AND id = ?",
+    );
     const insertStmt = this.db.prepare(`
       INSERT INTO posts (
         id, dataset_id, code, username, author_fullname, author_followers,
@@ -177,10 +198,10 @@ export class ThreadsDatasetDB {
         updated_at = excluded.updated_at
     `);
 
-    this.db.exec('BEGIN IMMEDIATE');
+    this.db.exec("BEGIN IMMEDIATE");
     try {
       for (const p of items) {
-        const pid = String(p.id || p.pk || '');
+        const pid = String(p.id || p.pk || "");
         if (!pid) continue;
 
         const author = p.author || p.user || {};
@@ -198,13 +219,13 @@ export class ThreadsDatasetDB {
         insertStmt.run(
           pid,
           dataset.id,
-          p.code || '',
-          author.username || p.username || '',
-          author.full_name || '',
+          p.code || "",
+          author.username || p.username || "",
+          author.full_name || "",
           author.follower_count ?? 0,
-          p.url || (p.code ? `https://www.threads.com/t/${p.code}` : ''),
+          p.url || (p.code ? `https://www.threads.net/t/${p.code}` : ""),
           p.published_at || p.taken_at || 0,
-          p.caption || p.text || '',
+          p.caption || p.text || "",
           metrics.likes ?? p.like_count ?? 0,
           metrics.replies ?? p.reply_count ?? 0,
           metrics.reposts ?? p.repost_count ?? 0,
@@ -213,14 +234,16 @@ export class ThreadsDatasetDB {
           mediaList.length > 0 ? JSON.stringify(mediaList) : null,
           JSON.stringify(p),
           now,
-          now
+          now,
         );
       }
 
-      this.db.prepare('UPDATE datasets SET updated_at = ? WHERE id = ?').run(now, dataset.id);
-      this.db.exec('COMMIT');
+      this.db
+        .prepare("UPDATE datasets SET updated_at = ? WHERE id = ?")
+        .run(now, dataset.id);
+      this.db.exec("COMMIT");
     } catch (err) {
-      this.db.exec('ROLLBACK');
+      this.db.exec("ROLLBACK");
       throw err;
     }
 
@@ -235,7 +258,7 @@ export class ThreadsDatasetDB {
   upsertProfile(profileData) {
     if (!profileData) return null;
     const p = profileData.profile || profileData;
-    const username = (p.username || '').toLowerCase().trim();
+    const username = (p.username || "").toLowerCase().trim();
     if (!username) return null;
 
     const now = Math.floor(Date.now() / 1000);
@@ -266,19 +289,19 @@ export class ThreadsDatasetDB {
 
     stmt.run(
       username,
-      String(p.id || ''),
-      p.full_name || '',
-      p.biography || '',
+      String(p.id || ""),
+      p.full_name || "",
+      p.biography || "",
       p.metrics?.followers_count ?? p.follower_count ?? 0,
       p.metrics?.following_count ?? p.following_count ?? 0,
       p.bio_links ? JSON.stringify(p.bio_links) : null,
       p.external_url || null,
-      p.profile_pic_url_hd || p.profile_pic_url || '',
+      p.profile_pic_url_hd || p.profile_pic_url || "",
       p.is_verified ? 1 : 0,
       p.is_private ? 1 : 0,
       JSON.stringify(profileData),
       now,
-      now
+      now,
     );
 
     return { username, updated_at: now };
@@ -305,29 +328,29 @@ export class ThreadsDatasetDB {
         text = excluded.text
     `);
 
-    this.db.exec('BEGIN IMMEDIATE');
+    this.db.exec("BEGIN IMMEDIATE");
     try {
       for (const r of items) {
-        const rid = String(r.id || '');
+        const rid = String(r.id || "");
         if (!rid) continue;
         stmt.run(
           rid,
-          String(r.post_id || postId || ''),
+          String(r.post_id || postId || ""),
           r.parent_id ? String(r.parent_id) : null,
-          r.code || '',
-          r.username || '',
-          r.text || '',
+          r.code || "",
+          r.username || "",
+          r.text || "",
           r.like_count || 0,
           r.reply_count || 0,
           r.created_at || 0,
           JSON.stringify(r),
-          now
+          now,
         );
         inserted++;
       }
-      this.db.exec('COMMIT');
+      this.db.exec("COMMIT");
     } catch (err) {
-      this.db.exec('ROLLBACK');
+      this.db.exec("ROLLBACK");
       throw err;
     }
 

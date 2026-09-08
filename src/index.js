@@ -3,14 +3,14 @@
  * Pure standalone direct HTTP Meta Threads scraper
  */
 
-export const VERSION = '0.1.0';
+export const VERSION = "0.1.1";
 
 export {
   getProfile,
   getUserPosts,
   searchThreads,
   getPostReplies,
-} from './scraper.js';
+} from "./scraper.js";
 
 export {
   buildReplyTree,
@@ -20,20 +20,20 @@ export {
   matchesStrictQuery,
   expandQuery,
   ENTITY_EXPANSION_MAP,
-} from './normalizers.js';
+} from "./normalizers.js";
 
 export {
   toCsv,
   formatProfileCsv,
   formatPostsCsv,
   formatRepliesCsv,
-} from './csv.js';
+} from "./csv.js";
 
 export {
   formatProfileStdout,
   formatPostsStdout,
   formatRepliesStdout,
-} from './formatters.js';
+} from "./formatters.js";
 
 export {
   fetchWithRetry,
@@ -41,9 +41,6 @@ export {
   resolveCookie,
   parseCookieInput,
   DEFAULT_HEADERS,
-} from './http.js';
+} from "./http.js";
 
-export {
-  ThreadsDatasetDB,
-  getDefaultDbPath,
-} from './db.js';
+export { ThreadsDatasetDB, getDefaultDbPath } from "./db.js";
