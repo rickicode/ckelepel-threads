@@ -794,9 +794,8 @@ export async function getPostReplies(target, options = {}) {
               like_count: post.like_count || 0,
               reply_count: post.text_post_app_info?.direct_reply_count || 0,
               taken_at: post.taken_at || Math.floor(Date.now() / 1000),
-              created_at: post.taken_at || Math.floor(Date.now() / 1000),
-              url: post.code
-                ? `https://www.threads.net/@${post.user?.username}/post/${post.code}`
+              created_at: post.taken_at || Math.floor(Date.now() / 1000),              url: post.code
+                ? (post.user?.username ? `https://www.threads.net/@${post.user.username}/post/${post.code}` : `https://www.threads.net/t/${post.code}`)
                 : "",
               media: replyMedia,
               has_media: replyMedia.length > 0,
