@@ -462,7 +462,34 @@ describe("ckelepel-threads pure engine tests", () => {
     assert.equal(datasets[0].name, "ai_research");
     assert.equal(datasets[0].post_count, 1);
 
+    // Test getDatasetPosts
+    const posts = db.getDatasetPosts("ai_research");
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0].id, "post_1001");
+    assert.equal(posts[0].like_count, 25);
+
+    // Test deleteDataset
+    const deleted = db.deleteDataset("ai_research");
+    assert.equal(deleted, true);
+    assert.equal(db.listDatasets().length, 0);
+
     db.close();
     if (fs.existsSync(tempDb)) fs.unlinkSync(tempDb);
+  });
+
+  it("exports timeout defaults and applies timeout configuration", async () => {
+    const {
+      DEFAULT_HEADERS_TIMEOUT_MS,
+      DEFAULT_BODY_TIMEOUT_MS,
+      getDispatcher,
+    } = await import("../src/index.js");
+    assert.equal(DEFAULT_HEADERS_TIMEOUT_MS, 15000);
+    assert.equal(DEFAULT_BODY_TIMEOUT_MS, 30000);
+
+    const dispatcher = getDispatcher("http://127.0.0.1:8080", {
+      headersTimeout: 5000,
+      bodyTimeout: 10000,
+    });
+    assert.ok(dispatcher);
   });
 });

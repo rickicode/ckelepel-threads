@@ -10,6 +10,8 @@ export function setRepliesDocId(newId) {
   REPLIES_DOC_ID = newId;
 }
 export const THREADS_GRAPHQL_ENDPOINT = "https://www.threads.net/graphql/query";
+export const DEFAULT_HEADERS_TIMEOUT_MS = 15000;
+export const DEFAULT_BODY_TIMEOUT_MS = 30000;
 
 export const DEFAULT_HEADERS = {
   "User-Agent":
@@ -27,7 +29,7 @@ export const DEFAULT_HEADERS = {
   "X-IG-App-ID": "238260118697367",
 };
 
-export function getDispatcher(proxyUrl) {
+export function getDispatcher(proxyUrl, timeoutConfig = {}) {
   const targetProxy =
     proxyUrl ||
     process.env.HTTPS_PROXY ||
@@ -35,7 +37,12 @@ export function getDispatcher(proxyUrl) {
     process.env.ALL_PROXY;
   if (targetProxy) {
     try {
-      return new ProxyAgent(targetProxy);
+      return new ProxyAgent({
+        uri: targetProxy,
+        headersTimeout:
+          timeoutConfig.headersTimeout ?? DEFAULT_HEADERS_TIMEOUT_MS,
+        bodyTimeout: timeoutConfig.bodyTimeout ?? DEFAULT_BODY_TIMEOUT_MS,
+      });
     } catch (err) {
       throw new Error(
         `Invalid proxy URL configuration: ${targetProxy} (${err.message})`,
@@ -65,7 +72,18 @@ export function parseCookieInput(input) {
       const parsed = JSON.parse(content);
       if (Array.isArray(parsed)) {
         return parsed
-          .filter((c) => c && c.name && c.value !== undefined)
+          .filter((c) => {
+            if (!c || !c.name || c.value === undefined) return false;
+            if (c.domain && typeof c.domain === "string") {
+              const d = c.domain.toLowerCase();
+              return (
+                d.includes("threads.net") ||
+                d.includes("instagram.com") ||
+                d.includes("facebook.com")
+              );
+            }
+            return true;
+          })
           .map((c) => `${c.name}=${c.value}`)
           .join("; ");
       }
@@ -117,8 +135,13 @@ export async function fetchWithRetry(url, options = {}, retryConfig = {}) {
   let lastError = null;
   let delay = initialDelay;
 
+  const headersTimeout = options.headersTimeout ?? DEFAULT_HEADERS_TIMEOUT_MS;
+  const bodyTimeout = options.bodyTimeout ?? DEFAULT_BODY_TIMEOUT_MS;
+
   const requestOptions = {
     ...options,
+    headersTimeout,
+    bodyTimeout,
     headers: {
       ...DEFAULT_HEADERS,
       ...(options.headers || {}),
@@ -131,7 +154,10 @@ export async function fetchWithRetry(url, options = {}, retryConfig = {}) {
   }
 
   if (!requestOptions.dispatcher) {
-    const dispatcher = getDispatcher(options.proxy);
+    const dispatcher = getDispatcher(options.proxy, {
+      headersTimeout,
+      bodyTimeout,
+    });
     if (dispatcher) {
       requestOptions.dispatcher = dispatcher;
     }

@@ -264,6 +264,11 @@ program
     30,
   )
   .option("--no-tree", "Do not build visual reply tree")
+  .option(
+    "-w, --watch [seconds]",
+    "Poll periodically for new replies (default: 15s)",
+    (val) => (val === true || val === "" ? 15 : parseInt(val, 10)),
+  )
   .option("-o, --format <type>", "Output format: stdout, json, csv", "stdout")
   .option("--json", "Shortcut for --format json")
   .option("--csv", "Shortcut for --format csv")
@@ -281,6 +286,94 @@ program
     try {
       const cookie = resolveCookie(options.cookie);
       const proxy = resolveProxy(options.proxy);
+
+      if (options.watch) {
+        const intervalSec =
+          typeof options.watch === "number" && !isNaN(options.watch)
+            ? Math.max(3, options.watch)
+            : 15;
+        const seenReplyIds = new Set();
+        let running = true;
+        process.on("SIGINT", () => {
+          running = false;
+          process.exit(0);
+        });
+        process.on("SIGTERM", () => {
+          running = false;
+          process.exit(0);
+        });
+
+        const poll = async () => {
+          try {
+            const data = await getPostReplies(url_or_code, {
+              limit: options.limit,
+              tree: options.tree,
+              cookie,
+              proxy,
+            });
+
+            const freshReplies = [];
+            for (const r of data.replies || []) {
+              if (!seenReplyIds.has(r.id)) {
+                seenReplyIds.add(r.id);
+                freshReplies.push(r);
+              }
+            }
+
+            let format = options.format;
+            if (options.json) format = "json";
+            if (options.csv) format = "csv";
+
+            if (seenReplyIds.size === freshReplies.length) {
+              // Initial poll
+              saveToDataset(options, data, "replies");
+              const output = renderOutput(data, format, {
+                stdout: formatRepliesStdout,
+                csv: formatRepliesCsv,
+              });
+              console.log(output);
+            } else if (freshReplies.length > 0) {
+              saveToDataset(
+                options,
+                { ...data, replies: freshReplies },
+                "replies",
+              );
+              const deltaData = {
+                status: "ok",
+                rootPost: data.rootPost,
+                count: freshReplies.length,
+                replies: freshReplies,
+              };
+              const output = renderOutput(deltaData, format, {
+                stdout: (d) => {
+                  const lines = [`\n=== [NEW REPLIES (${d.replies.length})] ===`];
+                  d.replies.forEach((r, i) => {
+                    lines.push(
+                      `${i + 1}. @${r.username} (Likes: ${r.like_count || 0}): ${r.text}`,
+                    );
+                  });
+                  return lines.join("\n");
+                },
+                csv: formatRepliesCsv,
+              });
+              console.log(output);
+            }
+          } catch (pollErr) {
+            console.error(`[Watch Error] ${pollErr.message}`);
+          }
+        };
+
+        await poll();
+        while (running) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, intervalSec * 1000),
+          );
+          if (!running) break;
+          await poll();
+        }
+        return;
+      }
+
       const data = await getPostReplies(url_or_code, {
         limit: options.limit,
         tree: options.tree,
@@ -308,10 +401,99 @@ program
 program
   .command("dataset")
   .description("Manage or inspect local SQLite dataset database")
+  .argument("[dataset_name]", "Dataset name to inspect or export")
+  .option("--export", "Export posts from the specified dataset")
+  .option(
+    "-l, --limit <number>",
+    "Limit number of posts to export",
+    (val) => parseInt(val, 10),
+  )
+  .option(
+    "-o, --format <type>",
+    "Output format for export: stdout, json, csv",
+    "stdout",
+  )
+  .option("--json", "Shortcut for --format json")
+  .option("--csv", "Shortcut for --format csv")
+  .option("--output <file>", "Save exported output to file path")
+  .option("--delete", "Delete the specified dataset and its posts")
   .option("--db <path>", "Custom SQLite database file path")
-  .action(async (options) => {
+  .action(async (dataset_name, options) => {
     try {
       const db = new ThreadsDatasetDB(options.db);
+
+      if (options.delete && dataset_name) {
+        const deleted = db.deleteDataset(dataset_name);
+        db.close();
+        if (deleted) {
+          console.log(`Dataset "${dataset_name}" deleted successfully.`);
+        } else {
+          console.error(`[Error] Dataset "${dataset_name}" not found.`);
+          process.exit(1);
+        }
+        return;
+      }
+
+      const shouldExport =
+        options.export ||
+        (dataset_name && (options.json || options.csv || options.output));
+
+      if (shouldExport) {
+        const posts = db.getDatasetPosts(
+          dataset_name || "default",
+          options.limit,
+        );
+        db.close();
+
+        let format = options.format;
+        if (options.json) format = "json";
+        if (options.csv) format = "csv";
+        if (!options.json && !options.csv && format === "stdout") {
+          format = "json";
+        }
+
+        const output =
+          format === "csv"
+            ? formatPostsCsv(posts)
+            : JSON.stringify(
+                {
+                  status: "ok",
+                  dataset: dataset_name || "default",
+                  count: posts.length,
+                  posts,
+                },
+                null,
+                2,
+              );
+
+        if (options.output) {
+          fs.writeFileSync(options.output, output, "utf-8");
+          console.log(`Exported ${posts.length} posts to ${options.output}`);
+        } else {
+          console.log(output);
+        }
+        return;
+      }
+
+      if (dataset_name) {
+        const posts = db.getDatasetPosts(dataset_name, options.limit || 20);
+        db.close();
+        console.log(
+          `=== Dataset: [${dataset_name}] (Returned: ${posts.length} posts) ===`,
+        );
+        if (posts.length === 0) {
+          console.log("No posts found in this dataset.");
+        } else {
+          console.log(
+            formatPostsStdout({
+              query: `Dataset ${dataset_name}`,
+              results: posts,
+            }),
+          );
+        }
+        return;
+      }
+
       const datasets = db.listDatasets();
       db.close();
 

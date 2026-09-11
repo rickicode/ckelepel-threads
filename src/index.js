@@ -41,6 +41,8 @@ export {
   resolveCookie,
   parseCookieInput,
   DEFAULT_HEADERS,
+  DEFAULT_HEADERS_TIMEOUT_MS,
+  DEFAULT_BODY_TIMEOUT_MS,
 } from "./http.js";
 
 export { ThreadsDatasetDB, getDefaultDbPath } from "./db.js";

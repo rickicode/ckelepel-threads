@@ -163,6 +163,90 @@ export class ThreadsDatasetDB {
     return row ? Number(row.total) : 0;
   }
 
+  getDatasetPosts(datasetNameOrId, limit = null) {
+    const cleanName = (datasetNameOrId || "default").trim().toLowerCase();
+    const dataset = cleanName.startsWith("ds_")
+      ? this.db
+          .prepare("SELECT id, name FROM datasets WHERE id = ?")
+          .get(cleanName)
+      : this.db
+          .prepare("SELECT id, name FROM datasets WHERE name = ?")
+          .get(cleanName);
+
+    if (!dataset) return [];
+
+    const query = limit
+      ? "SELECT * FROM posts WHERE dataset_id = ? ORDER BY taken_at DESC LIMIT ?"
+      : "SELECT * FROM posts WHERE dataset_id = ? ORDER BY taken_at DESC";
+
+    const rows = limit
+      ? this.db.prepare(query).all(dataset.id, limit)
+      : this.db.prepare(query).all(dataset.id);
+
+    return rows.map((r) => {
+      if (r.raw_json) {
+        try {
+          return JSON.parse(r.raw_json);
+        } catch {}
+      }
+      return {
+        id: r.id,
+        code: r.code,
+        caption: r.caption,
+        user: {
+          id: r.username,
+          username: r.username,
+          full_name: r.author_fullname,
+        },
+        author: {
+          id: r.username,
+          username: r.username,
+          full_name: r.author_fullname,
+        },
+        metrics: {
+          likes: r.like_count,
+          replies: r.reply_count,
+          reposts: r.repost_count,
+          quotes: r.quote_count,
+        },
+        like_count: r.like_count,
+        reply_count: r.reply_count,
+        repost_count: r.repost_count,
+        quote_count: r.quote_count,
+        taken_at: r.taken_at,
+        url: r.url,
+        has_media: !!r.has_media,
+        media: r.media_json ? JSON.parse(r.media_json) : [],
+      };
+    });
+  }
+
+  deleteDataset(datasetNameOrId) {
+    const cleanName = (datasetNameOrId || "").trim().toLowerCase();
+    if (!cleanName) return false;
+
+    const dataset = cleanName.startsWith("ds_")
+      ? this.db
+          .prepare("SELECT id, name FROM datasets WHERE id = ?")
+          .get(cleanName)
+      : this.db
+          .prepare("SELECT id, name FROM datasets WHERE name = ?")
+          .get(cleanName);
+
+    if (!dataset) return false;
+
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      this.db.prepare("DELETE FROM posts WHERE dataset_id = ?").run(dataset.id);
+      this.db.prepare("DELETE FROM datasets WHERE id = ?").run(dataset.id);
+      this.db.exec("COMMIT");
+      return true;
+    } catch (err) {
+      this.db.exec("ROLLBACK");
+      throw err;
+    }
+  }
+
   upsertPosts(datasetNameOrId, posts = []) {
     const items = Array.isArray(posts) ? posts : [posts];
     if (items.length === 0) {

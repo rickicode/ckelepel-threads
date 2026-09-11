@@ -73,17 +73,21 @@ describe("ckelepel CLI end-to-end interface commands & flags", () => {
     assert.ok(stdout.includes("-o, --format <type>"));
     assert.ok(stdout.includes("--json"));
     assert.ok(stdout.includes("--csv"));
+    assert.ok(stdout.includes("-w, --watch [seconds]"));
     assert.ok(stdout.includes("-c, --cookie <string>"));
     assert.ok(stdout.includes("--proxy <url>"));
   });
 
-  it("dataset command exhibits correct help", async () => {
+  it("dataset command exhibits correct help and options", async () => {
     const { stdout } = await execFileAsync("node", [
       binPath,
       "dataset",
       "--help",
     ]);
     assert.ok(stdout.includes("--db <path>"));
+    assert.ok(stdout.includes("--export"));
+    assert.ok(stdout.includes("--output <file>"));
+    assert.ok(stdout.includes("--delete"));
   });
 
   it("profile fails gracefully on non-existent or invalid network target without throwing unhandled exception", async () => {
