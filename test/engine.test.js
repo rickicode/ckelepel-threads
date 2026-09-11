@@ -333,8 +333,75 @@ describe("ckelepel-threads pure engine tests", () => {
     assert.equal(res.count, 1);
     assert.equal(res.replies[0].id, "reply_999");
     assert.equal(res.replies[0].text, "First reply comment");
+    assert.equal(typeof res.replies[0].taken_at, "number");
+    assert.equal(typeof res.replies[0].is_verified, "boolean");
+    assert.ok(Array.isArray(res.replies[0].media));
     assert.ok(res.tree);
     assert.ok(res.tree_ascii);
+  });
+
+  it("getPostReplies resolves root post even when media has no caption", async () => {
+    const mockHtml = `
+      <html>
+        <body>
+          <script>
+            /* BarcelonaPermalinkMobilePostColumnPageQueryRelayPreloader RelayPrefetchedStreamCache */
+            {
+              "require": [
+                [
+                  "RelayPrefetchedStreamCache",
+                  "set",
+                  [],
+                  [
+                    {
+                      "__bbox": {
+                        "require": [
+                          [
+                            "RelayPrefetchedStreamCache",
+                            "next",
+                            [],
+                            [
+                              {
+                                "__bbox": {
+                                  "result": {
+                                    "data": {
+                                      "media": {
+                                        "pk": "nocap_root_123",
+                                        "code": "NoCapCode",
+                                        "caption": null,
+                                        "user": { "username": "photographer", "pk": "88" }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                ]
+              ]
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
+    const mockFetch = async () => ({
+      ok: true,
+      status: 200,
+      text: async () => mockHtml,
+    });
+
+    const res = await getPostReplies("NoCapCode", {
+      fetchFn: mockFetch,
+    });
+    assert.equal(res.status, "ok");
+    assert.equal(res.rootPost.id, "nocap_root_123");
+    assert.equal(res.rootPost.caption, "");
+    assert.equal(res.rootPost.user.username, "photographer");
   });
 
   it("getPostReplies handles undefined and empty cookie gracefully without TypeError", async () => {

@@ -233,6 +233,7 @@ export function normalizePost(post) {
     caption: post.caption?.text || post.text || "",
     topic,
     user: {
+      id: String(post.user?.pk ?? post.user?.id ?? ""),
       username: post.user?.username || "",
       full_name: post.user?.full_name || "",
       pk: String(post.user?.pk ?? post.user?.id ?? ""),

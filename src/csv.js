@@ -51,7 +51,7 @@ export function formatPostsCsv(posts) {
     id: item.id || "",
     code: item.code || "",
     username: item.user?.username || "",
-    user_id: item.user?.id || "",
+    user_id: item.author?.id || item.user?.id || item.user?.pk || "",
     is_verified: item.user?.is_verified ? "true" : "false",
     caption: item.caption || "",
     likes: item.metrics?.likes ?? item.like_count ?? 0,
@@ -93,7 +93,7 @@ export function formatRepliesCsv(data) {
     is_verified: r.is_verified ? "true" : "false",
     text: r.text || "",
     likes: r.like_count || 0,
-    taken_at: r.taken_at || "",
+    taken_at: r.taken_at || r.created_at || "",
     url: r.url || "",
   }));
   return toCsv(rows, [

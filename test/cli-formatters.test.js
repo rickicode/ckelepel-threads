@@ -110,19 +110,46 @@ describe("ckelepel-threads CLI formatting & CSV tests", () => {
     assert.ok(csv.includes("85000000"));
   });
 
-  it("formatPostsCsv outputs CSV lines with headers", () => {
+  it("formatPostsCsv outputs CSV lines with headers and resolves user_id correctly", () => {
     const csv = formatPostsCsv(samplePosts);
     assert.ok(csv.includes('"id","code","username"'));
     assert.ok(csv.includes('"p100"'));
     assert.ok(csv.includes('"XYZ987"'));
     assert.ok(csv.includes('"Hello Paris Fashion Week!"'));
+    assert.ok(csv.includes('"12345"'));
+
+    // Test fallback when user only has pk (from normalizePost)
+    const normalizedStylePost = {
+      id: "p200",
+      code: "ABC111",
+      user: { username: "test_user", pk: "888999" },
+      author: { id: "888999", username: "test_user" },
+    };
+    const csv2 = formatPostsCsv([normalizedStylePost]);
+    assert.ok(csv2.includes('"888999"'));
   });
 
-  it("formatRepliesCsv outputs valid CSV structure", () => {
+  it("formatRepliesCsv outputs valid CSV structure with created_at fallback and is_verified", () => {
     const csv = formatRepliesCsv(sampleReplies);
     assert.ok(csv.includes('"id","post_id","parent_id","code"'));
     assert.ok(csv.includes('"rep_001"'));
     assert.ok(csv.includes('"Solo & You and Me!"'));
+
+    // Test when reply uses created_at instead of taken_at
+    const replyWithCreatedAt = {
+      replies: [
+        {
+          id: "rep_002",
+          post_id: "root_001",
+          username: "fan2",
+          created_at: 1700000099,
+          is_verified: true,
+        },
+      ],
+    };
+    const csv2 = formatRepliesCsv(replyWithCreatedAt);
+    assert.ok(csv2.includes('"1700000099"'));
+    assert.ok(csv2.includes('"true"'));
   });
 
   it("formatProfileStdout renders readable text", () => {

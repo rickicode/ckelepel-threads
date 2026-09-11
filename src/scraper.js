@@ -13,6 +13,7 @@ import {
   extractInitialPayload,
   extractPostsFromHtml,
   normalizePost,
+  extractMediaFromPost,
   buildReplyTree,
   formatReplyTreeAscii,
   expandQuery,
@@ -748,6 +749,16 @@ export async function getPostReplies(target, options = {}) {
   const scriptRegex = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
   let match;
 
+  function findMedia(obj) {
+    if (!obj || typeof obj !== "object") return null;
+    if (obj.media && (obj.media.pk || obj.media.id)) return obj.media;
+    for (const k of Object.keys(obj)) {
+      const found = findMedia(obj[k]);
+      if (found) return found;
+    }
+    return null;
+  }
+
   function processEdge(edge) {
     const items = edge.node?.thread_items || [];
     if (items.length === 0) return;
@@ -763,27 +774,32 @@ export async function getPostReplies(target, options = {}) {
         } else if (pkStr !== String(rootPost.id)) {
           if (!seenIds.has(pkStr)) {
             seenIds.add(pkStr);
-            let parentId = String(rootPost.id);
+            let parentId = rootPost ? String(rootPost.id) : null;
             if (i > 0 && (items[i - 1]?.post?.pk || items[i - 1]?.post?.id)) {
               parentId = String(items[i - 1].post.pk || items[i - 1].post.id);
             }
 
+            const replyMedia = extractMediaFromPost(post);
             const normalizedReply = {
               id: pkStr,
-              post_id: rootPost.id,
+              post_id: rootPost ? rootPost.id : null,
               parent_id: parentId,
               code: post.code || "",
               username: post.user?.username || "",
-              user_id: post.user?.pk || "",
+              user_id: String(post.user?.pk ?? post.user?.id ?? ""),
+              is_verified: !!post.user?.is_verified,
               text: post.caption?.text || post.text || "",
               reply_to:
                 post.text_post_app_info?.reply_to_author?.username || null,
               like_count: post.like_count || 0,
               reply_count: post.text_post_app_info?.direct_reply_count || 0,
+              taken_at: post.taken_at || Math.floor(Date.now() / 1000),
               created_at: post.taken_at || Math.floor(Date.now() / 1000),
               url: post.code
                 ? `https://www.threads.net/@${post.user?.username}/post/${post.code}`
                 : "",
+              media: replyMedia,
+              has_media: replyMedia.length > 0,
             };
             replies.push(normalizedReply);
             if (typeof options.onProgress === "function") {
@@ -812,8 +828,8 @@ export async function getPostReplies(target, options = {}) {
         // Check if root media is present in mobile post column payload
         const media =
           parsed.require?.[0]?.[3]?.[0]?.__bbox?.require?.[0]?.[3]?.[1]?.__bbox
-            ?.result?.data?.media;
-        if (media && media.caption && !rootPost) {
+            ?.result?.data?.media || findMedia(parsed);
+        if (media && (media.pk || media.id) && !rootPost) {
           rootPost = normalizePost(media);
           targetPostId = String(media.pk || rootPost.id).split("_")[0];
         }
@@ -868,8 +884,8 @@ export async function getPostReplies(target, options = {}) {
           const parsed = JSON.parse(content);
           const media =
             parsed.require?.[0]?.[3]?.[0]?.__bbox?.require?.[0]?.[3]?.[1]
-              ?.__bbox?.result?.data?.media;
-          if (media && media.caption && !rootPost) {
+              ?.__bbox?.result?.data?.media || findMedia(parsed);
+          if (media && (media.pk || media.id) && !rootPost) {
             rootPost = normalizePost(media);
             targetPostId = String(media.pk || rootPost.id).split("_")[0];
           }
