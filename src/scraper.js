@@ -21,7 +21,15 @@ import {
 import { getLiveQueryMetadata } from "./docid-resolver.js";
 
 export async function getProfile(username, options = {}) {
-  const cleanUsername = username.replace(/^@/, "").trim();
+  let cleanUsername = String(username || "").trim();
+  const urlUserMatch = cleanUsername.match(
+    /(?:threads\.(?:net|com)\/)?@([A-Za-z0-9_.-]+)/,
+  );
+  if (urlUserMatch) {
+    cleanUsername = urlUserMatch[1];
+  } else {
+    cleanUsername = cleanUsername.replace(/^@/, "").trim();
+  }
   if (!cleanUsername) {
     throw new Error("Username profil Threads wajib diisi");
   }
@@ -185,7 +193,15 @@ export async function getProfile(username, options = {}) {
 }
 
 export async function getUserPosts(username, options = {}) {
-  const cleanUsername = username.replace(/^@/, "").trim();
+  let cleanUsername = String(username || "").trim();
+  const urlUserMatch = cleanUsername.match(
+    /(?:threads\.(?:net|com)\/)?@([A-Za-z0-9_.-]+)/,
+  );
+  if (urlUserMatch) {
+    cleanUsername = urlUserMatch[1];
+  } else {
+    cleanUsername = cleanUsername.replace(/^@/, "").trim();
+  }
   if (!cleanUsername) {
     throw new Error("Username profil Threads wajib diisi");
   }
@@ -704,7 +720,7 @@ export async function searchThreads(query, options = {}) {
 }
 
 export async function getPostReplies(target, options = {}) {
-  const limit = options.limit || 20;
+  const limit = options.limit !== undefined ? options.limit : 20;
 
   let code = target.trim();
   const urlMatch =

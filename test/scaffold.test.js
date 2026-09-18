@@ -10,7 +10,7 @@ import {
 
 describe("ckelepel-threads scaffolding verification", () => {
   it("exports semantic version", () => {
-    assert.equal(VERSION, "0.1.2");
+    assert.equal(VERSION, "0.1.3");
   });
 
   it("exports core scraper function signatures", () => {

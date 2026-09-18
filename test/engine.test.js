@@ -14,7 +14,7 @@ import {
 
 describe("ckelepel-threads pure engine tests", () => {
   it("exports semantic version and methods", () => {
-    assert.equal(VERSION, "0.1.2");
+    assert.equal(VERSION, "0.1.3");
     assert.equal(typeof getProfile, "function");
     assert.equal(typeof getUserPosts, "function");
     assert.equal(typeof searchThreads, "function");
@@ -154,6 +154,11 @@ describe("ckelepel-threads pure engine tests", () => {
     assert.equal(res.profile.username, "zuck");
     assert.equal(res.profile.follower_count, 5000000);
     assert.equal(res.profile.biography, "Building open source AI");
+
+    const resUrl = await getProfile("https://www.threads.net/@zuck", {
+      fetchFn: mockFetch,
+    });
+    assert.equal(resUrl.profile.username, "zuck");
   });
 
   it("getUserPosts parses user posts from mock response", async () => {
@@ -338,6 +343,15 @@ describe("ckelepel-threads pure engine tests", () => {
     assert.ok(Array.isArray(res.replies[0].media));
     assert.ok(res.tree);
     assert.ok(res.tree_ascii);
+
+    const resLimitZero = await getPostReplies("Code12345", {
+      fetchFn: mockFetch,
+      limit: 0,
+    });
+    assert.equal(resLimitZero.status, "ok");
+    assert.equal(resLimitZero.count, 0);
+    assert.equal(resLimitZero.replies.length, 0);
+    assert.equal(resLimitZero.rootPost.id, "root_999");
   });
 
   it("getPostReplies resolves root post even when media has no caption", async () => {

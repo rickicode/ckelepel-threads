@@ -112,7 +112,11 @@ export function resolveCookie(cookieInput) {
 
   const defaultCookieFiles = [
     path.join(process.cwd(), "cookies.json"),
+    path.join(process.cwd(), "cookies.txt"),
     path.join(os.homedir(), ".config", "ckelepel", "cookies.json"),
+    path.join(os.homedir(), ".config", "ckelepel", "cookie.txt"),
+    path.join(os.homedir(), ".config", "ckelepel", "cookies.txt"),
+    "/workspaces/HERMES-SCRIPTS/social-media/data/rickicode_cookie_str.txt",
   ];
   for (const f of defaultCookieFiles) {
     if (fs.existsSync(f)) {

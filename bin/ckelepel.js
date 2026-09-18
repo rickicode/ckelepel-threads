@@ -265,6 +265,7 @@ program
     (val) => parseInt(val, 10),
     30,
   )
+  .option("--post-only", "Fetch only the main post without scraping replies")
   .option("--no-tree", "Do not build visual reply tree")
   .option(
     "-w, --watch [seconds]",
@@ -378,8 +379,9 @@ program
         return;
       }
 
+      const effectiveLimit = options.postOnly ? 0 : options.limit;
       const data = await getPostReplies(url_or_code, {
-        limit: options.limit,
+        limit: effectiveLimit,
         tree: options.tree,
         cookie,
         proxy,
