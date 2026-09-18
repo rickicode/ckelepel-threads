@@ -265,8 +265,11 @@ export function normalizePost(post) {
     reply_count: replyCount,
     repost_count: repostCount,
     quote_count: quoteCount,
-    taken_at: post.taken_at || Math.floor(Date.now() / 1000),    url: post.code
-      ? (post.user?.username ? `https://www.threads.net/@${post.user.username}/post/${post.code}` : `https://www.threads.net/t/${post.code}`)
+    taken_at: post.taken_at || Math.floor(Date.now() / 1000),
+    url: post.code
+      ? post.user?.username
+        ? `https://www.threads.net/@${post.user.username}/post/${post.code}`
+        : `https://www.threads.net/t/${post.code}`
       : "",
   };
 }

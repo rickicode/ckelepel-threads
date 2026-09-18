@@ -90,6 +90,7 @@ program
 
 program
   .command("profile")
+  .alias("user")
   .description("Fetch a Threads user profile")
   .argument("<username>", "Threads handle without @")
   .option("-p, --posts", "Include recent posts in output", false)
@@ -255,6 +256,7 @@ program
 
 program
   .command("replies")
+  .alias("post")
   .description("Fetch comments and reply trees for a post")
   .argument("<url_or_code>", "Post URL or shortcode")
   .option(
@@ -346,7 +348,9 @@ program
               };
               const output = renderOutput(deltaData, format, {
                 stdout: (d) => {
-                  const lines = [`\n=== [NEW REPLIES (${d.replies.length})] ===`];
+                  const lines = [
+                    `\n=== [NEW REPLIES (${d.replies.length})] ===`,
+                  ];
                   d.replies.forEach((r, i) => {
                     lines.push(
                       `${i + 1}. @${r.username} (Likes: ${r.like_count || 0}): ${r.text}`,
@@ -403,10 +407,8 @@ program
   .description("Manage or inspect local SQLite dataset database")
   .argument("[dataset_name]", "Dataset name to inspect or export")
   .option("--export", "Export posts from the specified dataset")
-  .option(
-    "-l, --limit <number>",
-    "Limit number of posts to export",
-    (val) => parseInt(val, 10),
+  .option("-l, --limit <number>", "Limit number of posts to export", (val) =>
+    parseInt(val, 10),
   )
   .option(
     "-o, --format <type>",

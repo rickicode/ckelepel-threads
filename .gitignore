@@ -9,3 +9,6 @@ coverage/
 *.db
 *.db-wal
 *.db-shm
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

@@ -14,7 +14,7 @@ import {
 
 describe("ckelepel-threads pure engine tests", () => {
   it("exports semantic version and methods", () => {
-    assert.equal(VERSION, "0.1.1");
+    assert.equal(VERSION, "0.1.2");
     assert.equal(typeof getProfile, "function");
     assert.equal(typeof getUserPosts, "function");
     assert.equal(typeof searchThreads, "function");

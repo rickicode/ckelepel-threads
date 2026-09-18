@@ -1,12 +1,40 @@
+import fs from "node:fs";
+import path from "node:path";
 import { fetchWithRetry } from "./http.js";
 
-// In-memory cache for dynamic query metadata with 30m TTL
+// In-memory and disk cache for dynamic query metadata with 24h TTL
 const queryMetadataCache = new Map();
-const CACHE_TTL_MS = 30 * 60 * 1000;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const DISK_CACHE_PATH = "/tmp/ckelepel_docid_cache.json";
+
+function loadDiskCache() {
+  try {
+    if (fs.existsSync(DISK_CACHE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(DISK_CACHE_PATH, "utf-8"));
+      for (const [k, v] of Object.entries(data)) {
+        if (v && Date.now() - v.timestamp < CACHE_TTL_MS) {
+          queryMetadataCache.set(k, v);
+        }
+      }
+    }
+  } catch {}
+}
+
+function saveDiskCache() {
+  try {
+    const obj = {};
+    for (const [k, v] of queryMetadataCache.entries()) {
+      obj[k] = v;
+    }
+    fs.writeFileSync(DISK_CACHE_PATH, JSON.stringify(obj), "utf-8");
+  } catch {}
+}
+
+loadDiskCache();
 
 /**
  * Dynamically extract doc_id and required relay provider flags from live Threads JS bundles.
- * Caches result in memory to avoid repeated network parsing.
+ * Caches result in memory and on disk to avoid repeated network parsing across CLI executions.
  *
  * @param {string} operationName - e.g. "BarcelonaPostPageDirectQuery"
  * @param {object} options - fetch & proxy options
@@ -37,17 +65,25 @@ export async function getLiveQueryMetadata(
       [];
 
     const urls = [...new Set(rawMatches.map((u) => u.replaceAll("\\/", "/")))];
-    // Search bundles containing Relay Operation
-    for (const bundleUrl of urls) {
+    // Search bundles in parallel chunks of 5
+    const chunkUrls = urls.slice(0, 15);
+    const inspectBundle = async (bundleUrl) => {
       try {
-        const bundleRes = await fetchWithRetry(bundleUrl, options, {
-          maxRetries: 1,
-        });
-        if (!bundleRes.ok) continue;
+        const bundleRes = await fetchWithRetry(
+          bundleUrl,
+          {
+            ...options,
+            headersTimeout: 3000,
+            bodyTimeout: 3000,
+          },
+          { maxRetries: 1 },
+        );
+        if (!bundleRes.ok) return null;
 
         const content = await bundleRes.text();
-        if (!content.includes(`${operationName}_threadsRelayOperation`))
-          continue;
+        if (!content.includes(`${operationName}_threadsRelayOperation`)) {
+          return null;
+        }
 
         let docId = null;
         const relayRegex = new RegExp(
@@ -58,7 +94,6 @@ export async function getLiveQueryMetadata(
           docId = m1[1];
         }
 
-        // Extract required Relay provider variable keys
         const providerVars = {};
         const idx = content.indexOf(`${operationName}$Parameters.threads`);
         if (idx !== -1) {
@@ -71,14 +106,23 @@ export async function getLiveQueryMetadata(
         }
 
         if (docId) {
-          const result = { docId, providerVars };
-          queryMetadataCache.set(operationName, {
-            data: result,
-            timestamp: Date.now(),
-          });
-          return result;
+          return { docId, providerVars };
         }
       } catch {}
+      return null;
+    };
+
+    // Parallel inspect
+    const results = await Promise.all(chunkUrls.map(inspectBundle));
+    for (const found of results) {
+      if (found) {
+        queryMetadataCache.set(operationName, {
+          data: found,
+          timestamp: Date.now(),
+        });
+        saveDiskCache();
+        return found;
+      }
     }
   } catch {}
 

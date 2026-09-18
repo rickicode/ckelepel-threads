@@ -760,7 +760,16 @@ export async function getPostReplies(target, options = {}) {
   }
 
   function processEdge(edge) {
-    const items = edge.node?.thread_items || [];
+    let items = edge.node?.thread_items || [];
+    if (items.length === 0 && Array.isArray(edge.node?.posts?.edges)) {
+      items = edge.node.posts.edges.map((pe) => ({ post: pe.node }));
+    }
+    if (items.length === 0 && (edge.node?.pk || edge.node?.id)) {
+      items = [{ post: edge.node }];
+    }
+    if (items.length === 0 && (edge.post?.pk || edge.post?.id)) {
+      items = [{ post: edge.post }];
+    }
     if (items.length === 0) return;
 
     for (let i = 0; i < items.length; i++) {
@@ -794,8 +803,11 @@ export async function getPostReplies(target, options = {}) {
               like_count: post.like_count || 0,
               reply_count: post.text_post_app_info?.direct_reply_count || 0,
               taken_at: post.taken_at || Math.floor(Date.now() / 1000),
-              created_at: post.taken_at || Math.floor(Date.now() / 1000),              url: post.code
-                ? (post.user?.username ? `https://www.threads.net/@${post.user.username}/post/${post.code}` : `https://www.threads.net/t/${post.code}`)
+              created_at: post.taken_at || Math.floor(Date.now() / 1000),
+              url: post.code
+                ? post.user?.username
+                  ? `https://www.threads.net/@${post.user.username}/post/${post.code}`
+                  : `https://www.threads.net/t/${post.code}`
                 : "",
               media: replyMedia,
               has_media: replyMedia.length > 0,
@@ -818,7 +830,8 @@ export async function getPostReplies(target, options = {}) {
         "BarcelonaPermalinkMobilePostColumnPageQueryRelayPreloader",
       ) ||
       raw.includes("BarcelonaPostColumnPageQueryRelayPreloader") ||
-      raw.includes("RelayPrefetchedStreamCache")
+      raw.includes("RelayPrefetchedStreamCache") ||
+      raw.includes("direct_replies")
     ) {
       try {
         const cleaned = raw.replace(/\/\*[\s\S]*?\*\//g, "").trim();
@@ -834,25 +847,24 @@ export async function getPostReplies(target, options = {}) {
         }
 
         function findEdgesInBbox(obj) {
-          if (!obj || typeof obj !== "object") return null;
-          if (obj.data && obj.data.edges) return obj.data;
-          if (obj.edges && Array.isArray(obj.edges)) return obj;
+          if (!obj || typeof obj !== "object") return;
+          if (Array.isArray(obj.edges)) {
+            for (const edge of obj.edges) {
+              processEdge(edge);
+            }
+            if (obj.page_info) {
+              currentCursor = obj.page_info.end_cursor || currentCursor;
+              hasNextPage =
+                obj.page_info.has_next_page !== undefined
+                  ? !!obj.page_info.has_next_page
+                  : hasNextPage;
+            }
+          }
           for (const k of Object.keys(obj)) {
-            const found = findEdgesInBbox(obj[k]);
-            if (found) return found;
-          }
-          return null;
-        }
-        const dataObj = findEdgesInBbox(parsed);
-        if (dataObj && Array.isArray(dataObj.edges)) {
-          for (const edge of dataObj.edges) {
-            processEdge(edge);
-          }
-          if (dataObj.page_info) {
-            currentCursor = dataObj.page_info.end_cursor || null;
-            hasNextPage = !!dataObj.page_info.has_next_page;
+            findEdgesInBbox(obj[k]);
           }
         }
+        findEdgesInBbox(parsed);
       } catch {}
     }
   }
@@ -912,7 +924,7 @@ export async function getPostReplies(target, options = {}) {
   }
 
   // GraphQL cursor pagination loop
-  if (!hasNextPage && targetPostId) {
+  if (!hasNextPage && targetPostId && replies.length < limit) {
     hasNextPage = true;
   }
 
@@ -1003,7 +1015,15 @@ export async function getPostReplies(target, options = {}) {
         { fetchFn: options.fetchFn },
       );
 
-      let gjson = gres.ok ? await gres.json() : null;
+      let gjson = null;
+      if (gres.ok) {
+        try {
+          const contentType = gres.headers?.get?.("content-type") || "";
+          if (contentType.includes("json")) {
+            gjson = await gres.json();
+          }
+        } catch {}
+      }
 
       // Dynamic self-healing fallback: If Meta rotates doc_id or rejects the query
       if (!gjson || gjson.errors || !gjson.data?.data) {
